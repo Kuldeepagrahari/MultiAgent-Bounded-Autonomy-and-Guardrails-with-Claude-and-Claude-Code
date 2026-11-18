@@ -28,6 +28,7 @@ Ignore minor style preferences that don't affect readability or functionality.
 Invoke Skill "typescript-patterns" for .ts/.tsx files and Skill "javascript-best-practices" for .js files.
 Always invoke Skill "security-analysis" to check for security vulnerabilities.`,
   model: 'sonnet',
+  tools: ['Read', 'Grep', 'Skill'],
   mcpServers: ['eslint'],
 };
 

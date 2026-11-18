@@ -34,6 +34,7 @@ Avoid trivial cosmetic changes. Prioritize suggestions that make a real differen
 
 Output structured data summarizing all refactoring opportunities.`,
   model: 'sonnet',
+  tools: ['Read', 'Grep', 'Skill'],
 };
 
 // JSON Schema for structured output validation

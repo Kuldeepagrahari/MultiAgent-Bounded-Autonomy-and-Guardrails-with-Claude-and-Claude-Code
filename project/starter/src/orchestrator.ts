@@ -4,6 +4,7 @@ import { ReviewReport, ReviewReportSchema, ReviewReportJSONSchema } from './type
 import { buildOrchestratorPrompt } from './prompts';
 import { getMcpServersConfig } from './config/mcp.config';
 import { ReviewError, ErrorCodes } from './utils/error-handler';
+import { codeQualityAnalyzer, testCoverageAnalyzer, refactoringSuggester } from './agents';
 
 /**
  * Orchestrator configuration options
@@ -48,59 +49,24 @@ export class CodeReviewOrchestrator {
       // Build MCP servers configuration as Record<string, MCP server config>
       const mcpServers = getMcpServersConfig();
 
-      // Define subagents
+      // Define subagents using exported definitions
       const agents = {
-        'code-quality-analyzer': {
-          description: 'Analyzes code quality issues',
-          tools: ['Read', 'Grep'],
-          prompt: `You are a code quality analyzer. Analyze the provided file for quality issues and return structured JSON output.
-
-Use the structured_output format to return:
-{
-  "file": "filename",
-  "issues": [...],
-  "overallScore": number,
-  "summary": "text"
-}`
-        },
-        'test-coverage-analyzer': {
-          description: 'Analyzes test coverage gaps',
-          tools: ['Read', 'Grep', 'Glob'],
-          prompt: `You are a test coverage analyzer. Analyze the provided file for test coverage gaps and return structured JSON output.
-
-Use the structured_output format to return:
-{
-  "file": "filename",
-  "hasTests": boolean,
-  "testFiles": [...],
-  "untestedPaths": [...],
-  "coverageEstimate": number,
-  "summary": "text"
-}`
-        },
-        'refactoring-suggester': {
-          description: 'Suggests refactoring opportunities',
-          tools: ['Read', 'Grep'],
-          prompt: `You are a refactoring suggester. Analyze the provided file for refactoring opportunities and return structured JSON output.
-
-Use the structured_output format to return:
-{
-  "file": "filename",
-  "suggestions": [...],
-  "summary": "text"
-}`
-        }
+        'code-quality-analyzer': codeQualityAnalyzer,
+        'test-coverage-analyzer': testCoverageAnalyzer,
+        'refactoring-suggester': refactoringSuggester
       };
 
       // Create query options
+      const PROJECT_ROOT = process.env.PROJECT_ROOT || process.cwd();
       const options: Options = {
         model: this.model,
         agents,
         mcpServers,
-        cwd: process.env.PROJECT_ROOT || process.cwd(),
-        // Allow MCP tools and Task tool for subagent spawning
+        cwd: PROJECT_ROOT,
+        // Allow MCP tools, Skill tool for custom skills, and Task tool for subagent spawning
         allowedTools: [
           'Task',
+          'Skill',
           // GitHub MCP tools
           'mcp__github__get_pull_request',
           'mcp__github__get_pull_request_files',
@@ -109,6 +75,8 @@ Use the structured_output format to return:
           // ESLint MCP tools (allow wildcard pattern if supported)
           'mcp__eslint__lint_files'
         ],
+        // Configure skill discovery
+        settingSources: ['project'],
         // Set output format for structured output
         outputFormat: {
           type: 'json_schema',

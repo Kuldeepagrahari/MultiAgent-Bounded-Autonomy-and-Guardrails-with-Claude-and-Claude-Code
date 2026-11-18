@@ -33,6 +33,7 @@ Focus on:
 
 Output structured data with estimated coverage percentage (0-100).`,
   model: 'sonnet',
+  tools: ['Read', 'Grep', 'Glob', 'Skill'],
 };
 
 // JSON Schema for structured output validation
