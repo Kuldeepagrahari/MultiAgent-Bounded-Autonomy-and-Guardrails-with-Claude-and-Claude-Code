@@ -67,16 +67,38 @@ export async function withRetry<T>(
   maxRetries: number = 3,
   delayMs: number = 1000
 ): Promise<T> {
-  // TODO: Implement retry logic with exponential backoff
-  // Hints:
-  // - Use a for loop from 1 to maxRetries
-  // - Use try/catch to catch errors
-  // - Calculate backoff: delayMs * Math.pow(2, attempt - 1)
-  // - Add jitter: Math.random() * 100
-  // - Use setTimeout wrapped in Promise for delay
-  // - Throw ReviewError with ErrorCodes.RETRY_EXHAUSTED if all retries fail
+  let lastError: Error | null = null;
 
-  throw new Error('Not implemented');
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      // If this was the last attempt, throw the retry exhausted error
+      if (attempt === maxRetries) {
+        throw new ReviewError(
+          `Operation failed after ${maxRetries} retries: ${lastError.message}`,
+          ErrorCodes.RETRY_EXHAUSTED,
+          { maxRetries, lastError: lastError.message }
+        );
+      }
+
+      // Calculate backoff: exponential backoff with jitter
+      const backoff = delayMs * Math.pow(2, attempt - 1);
+      const jitter = Math.random() * 100;
+      const totalWait = backoff + jitter;
+
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, totalWait));
+    }
+  }
+
+  // This should never be reached, but TS needs it
+  throw new ReviewError(
+    'Retry loop completed unexpectedly',
+    ErrorCodes.RETRY_EXHAUSTED
+  );
 }
 
 /**
@@ -96,14 +118,24 @@ export async function withTimeout<T>(
   timeoutMs: number,
   errorMessage: string = 'Operation timed out'
 ): Promise<T> {
-  // TODO: Implement timeout wrapper using Promise.race
-  // Hints:
-  // - Use Promise.race to race fn() against a timeout promise
-  // - The timeout promise should reject after timeoutMs milliseconds
-  // - Throw ReviewError with ErrorCodes.AGENT_TIMEOUT on timeout
-  // - Include timeoutMs in metadata
+  // Create a timeout promise that rejects after the specified duration
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    const timer = setTimeout(() => {
+      reject(
+        new ReviewError(
+          errorMessage,
+          ErrorCodes.AGENT_TIMEOUT,
+          { timeoutMs }
+        )
+      );
+    }, timeoutMs);
 
-  throw new Error('Not implemented');
+    // Store the timer ID in case we need to clear it
+    // (It will be cleared automatically when the promise settles)
+  });
+
+  // Race the actual function against the timeout
+  return Promise.race([fn(), timeoutPromise]);
 }
 
 /**

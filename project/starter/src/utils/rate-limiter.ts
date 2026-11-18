@@ -55,16 +55,22 @@ export class RateLimiter {
    * @param estimatedTokens - Estimated tokens for this request
    */
   async acquire(estimatedTokens: number = 1000): Promise<void> {
-    // TODO: Implement acquire logic
-    // Steps:
     // 1. Wait for a concurrent slot if maxConcurrent is reached
-    //    - Use waitForSlot() helper
-    // 2. Wait for rate limit availability
-    //    - Use waitForRateLimit(estimatedTokens) helper
-    // 3. Increment activeRequests
-    // 4. Add a record to requestHistory with current timestamp and estimatedTokens
+    if (this.activeRequests >= this.config.maxConcurrent) {
+      await this.waitForSlot();
+    }
 
-    throw new Error('Not implemented');
+    // 2. Wait for rate limit availability
+    await this.waitForRateLimit(estimatedTokens);
+
+    // 3. Increment activeRequests
+    this.activeRequests++;
+
+    // 4. Add a record to requestHistory with current timestamp and estimatedTokens
+    this.requestHistory.push({
+      timestamp: Date.now(),
+      tokens: estimatedTokens
+    });
   }
 
   /**
@@ -76,7 +82,7 @@ export class RateLimiter {
 
     // Update last request with actual token count if provided
     if (actualTokens !== undefined && this.requestHistory.length > 0) {
-      const lastRequest = this.requestHistory[this.requestHistory.length - 1];
+      const lastRequest = this.requestHistory[this.requestHistory.length - 1]!;
       lastRequest.tokens = actualTokens;
     }
 
@@ -116,18 +122,24 @@ export class RateLimiter {
    * @returns true if the request can proceed without waiting
    */
   canProceed(estimatedTokens: number = 1000): boolean {
-    // TODO: Implement canProceed check
-    // Steps:
     // 1. Call pruneOldRecords() to remove stale entries
-    // 2. Check if activeRequests < maxConcurrent
-    // 3. Calculate requestsInWindow (length of requestHistory)
-    // 4. Calculate tokensInWindow (sum of tokens in requestHistory)
-    // 5. Return true if ALL conditions are met:
-    //    - activeRequests < maxConcurrent
-    //    - requestsInWindow < maxRequestsPerMinute
-    //    - tokensInWindow + estimatedTokens <= maxTokensPerMinute
+    this.pruneOldRecords();
 
-    throw new Error('Not implemented');
+    // 2. Check if activeRequests < maxConcurrent
+    const hasSlot = this.activeRequests < this.config.maxConcurrent;
+
+    // 3. Calculate requestsInWindow (length of requestHistory)
+    const requestsInWindow = this.requestHistory.length;
+
+    // 4. Calculate tokensInWindow (sum of tokens in requestHistory)
+    const tokensInWindow = this.requestHistory.reduce((sum, r) => sum + r.tokens, 0);
+
+    // 5. Return true if ALL conditions are met:
+    return (
+      hasSlot &&
+      requestsInWindow < this.config.maxRequestsPerMinute &&
+      tokensInWindow + estimatedTokens <= this.config.maxTokensPerMinute
+    );
   }
 
   /**
@@ -137,11 +149,10 @@ export class RateLimiter {
    * and there's a queued waiter.
    */
   private async waitForSlot(): Promise<void> {
-    // TODO: Implement waitForSlot
-    // Hint: Create a new Promise and add its resolve function to waitQueue
-    // The resolve function will be called by release()
-
-    throw new Error('Not implemented');
+    // Create a Promise that will be resolved when a slot becomes available
+    return new Promise(resolve => {
+      this.waitQueue.push(resolve);
+    });
   }
 
   /**
@@ -154,21 +165,28 @@ export class RateLimiter {
    * @param estimatedTokens - Estimated tokens for the request
    */
   private async waitForRateLimit(estimatedTokens: number): Promise<void> {
-    // TODO: Implement waitForRateLimit
-    // Steps:
-    // 1. Loop while canProceed(estimatedTokens) returns false
-    // 2. Call pruneOldRecords() to remove expired entries
-    // 3. If requestHistory is empty, break (no need to wait)
-    // 4. Calculate wait time:
-    //    - Get oldest timestamp: requestHistory[0].timestamp
-    //    - Calculate when it expires: oldestTimestamp + 60000 (60 seconds)
-    //    - Wait time = expiration time - now + small buffer (100ms)
-    //    - Use Math.max(100, waitTime) to ensure minimum wait
-    //    - Use Math.min(waitTime, 5000) to cap at 5 seconds
-    // 5. Sleep for the calculated wait time
-    // 6. Loop continues and checks again
+    // Loop while we can't proceed
+    while (!this.canProceed(estimatedTokens)) {
+      // Remove old records before checking
+      this.pruneOldRecords();
 
-    throw new Error('Not implemented');
+      // If no history, we can proceed
+      if (this.requestHistory.length === 0) {
+        break;
+      }
+
+      // Calculate wait time based on when oldest request expires
+      const oldestTimestamp = this.requestHistory[0]!.timestamp;
+      const expirationTime = oldestTimestamp + 60000; // 60 seconds window
+      let waitTime = expirationTime - Date.now() + 100; // Add 100ms buffer
+
+      // Ensure minimum and maximum wait times
+      waitTime = Math.max(100, waitTime); // Minimum 100ms
+      waitTime = Math.min(waitTime, 5000); // Maximum 5 seconds
+
+      // Sleep for the calculated duration
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
   }
 
   /**
@@ -178,13 +196,13 @@ export class RateLimiter {
    * count requests in the current 60-second window.
    */
   private pruneOldRecords(): void {
-    // TODO: Implement pruneOldRecords
-    // Steps:
-    // 1. Calculate the cutoff timestamp: Date.now() - 60000
-    // 2. Filter requestHistory to keep only records where timestamp > cutoff
-    // Hint: Use Array.filter()
+    // Calculate the cutoff timestamp (60 seconds ago)
+    const cutoffTimestamp = Date.now() - 60000;
 
-    throw new Error('Not implemented');
+    // Keep only records within the 60-second window
+    this.requestHistory = this.requestHistory.filter(
+      record => record.timestamp > cutoffTimestamp
+    );
   }
 }
 
