@@ -1,0 +1,374 @@
+{
+  "pullRequest": {
+    "owner": "lucaong",
+    "repo": "minisearch",
+    "number": 305
+  },
+  "fileReviews": [
+    {
+      "file": "src/MiniSearch.ts",
+      "codeQuality": {
+        "file": "src/MiniSearch.ts",
+        "issues": [
+          {
+            "line": 1707,
+            "severity": "high",
+            "category": "bug-risk",
+            "description": "Filter function is applied at executeQuerySpec() level but may also be applied at search() top-level, causing filters to execute multiple times. This violates least-surprise principle and could affect performance.",
+            "suggestion": "Either document that filters are idempotent and may execute multiple times, or refactor to prevent double-application by extracting filter logic into a separate step that applies only once."
+          },
+          {
+            "line": 1707,
+            "severity": "high",
+            "category": "bug-risk",
+            "description": "Scores calculated at executeQuerySpec() level may differ from final search() scores due to quality calculation timing. If users filter on score values, results could be inconsistent.",
+            "suggestion": "Ensure quality calculation is applied consistently and document when scores are finalized relative to filtering. Consider applying quality calculation at the last possible moment before returning to users."
+          },
+          {
+            "line": 1705,
+            "severity": "medium",
+            "category": "maintainability",
+            "description": "Filter is explicitly set to undefined to prevent double-application, but this is implicit and not obvious from the code.",
+            "suggestion": "Add a comment explaining why filter is set to undefined: 'Remove filter from options to prevent double-application at both QueryCombination and subquery levels'"
+          },
+          {
+            "line": 1710,
+            "severity": "medium",
+            "category": "best-practice",
+            "description": "Using Map.prototype.delete() during iteration could potentially cause issues if the implementation changes. Current approach is safe but non-idiomatic.",
+            "suggestion": "Consider collecting document IDs to remove first, then delete them in a separate pass: const toRemove = [...combined.entries()].filter(...); toRemove.forEach(id => combined.delete(id))"
+          },
+          {
+            "line": 1953,
+            "severity": "low",
+            "category": "style",
+            "description": "makeResult() is marked with @ignore but is a core internal method. The comment should be more explicit about its internal status.",
+            "suggestion": "Change @ignore to @internal or add more context: '@private - Internal method for creating search result objects'"
+          }
+        ],
+        "overallScore": 68,
+        "summary": "The MiniSearch.ts file implements filtering support for sub-queries by extracting result creation into makeResult() and applying filters at the QueryCombination level. While functionally correct, the implementation introduces two critical issues: (1) filter functions may execute multiple times causing unexpected behavior, and (2) score timing is inconsistent based on when filters are applied. The code quality is generally good but needs clarification through comments and potentially refactoring to address the double-filtering concern."
+      },
+      "testCoverage": {
+        "file": "src/MiniSearch.ts",
+        "hasTests": true,
+        "testFiles": [
+          "src/MiniSearch.test.js"
+        ],
+        "untestedPaths": [
+          {
+            "type": "edge-case",
+            "location": "Filter execution at executeQuerySpec level",
+            "priority": "critical",
+            "reasoning": "No test verifies that filter functions are idempotent and handle being called multiple times. This is crucial because filters now execute at both combination and search levels.",
+            "suggestedTest": "Create a test with a filter function that tracks call count and verify it's called the expected number of times with nested queries"
+          },
+          {
+            "type": "edge-case",
+            "location": "Score-based filtering in complex queries",
+            "priority": "high",
+            "reasoning": "Scores may differ between executeQuerySpec() and search() levels due to quality calculation timing. If users filter on score, behavior is unpredictable.",
+            "suggestedTest": "search({ queries: [{ queries: ['term'], filter: (r) => r.score > threshold }] }) and verify scores are calculated correctly"
+          },
+          {
+            "type": "edge-case",
+            "location": "Filter exception handling",
+            "priority": "high",
+            "reasoning": "No test verifies that exceptions thrown in filter functions are properly propagated rather than silently caught.",
+            "suggestedTest": "search with filter: (r) => { throw new Error('test') } and verify error propagates"
+          },
+          {
+            "type": "branch",
+            "location": "Filter null/undefined handling in QueryCombination",
+            "priority": "medium",
+            "reasoning": "No test for filter being null or undefined at QueryCombination level, ensuring robustness.",
+            "suggestedTest": "search({ queries: [...], filter: null }) and search({ queries: [...], filter: undefined })"
+          },
+          {
+            "type": "edge-case",
+            "location": "Complex nested query combinations",
+            "priority": "medium",
+            "reasoning": "Filtering behavior not tested with different combineWith strategies (AND vs OR).",
+            "suggestedTest": "Create tests combining filters with both 'AND' and 'OR' combineWith options"
+          },
+          {
+            "type": "edge-case",
+            "location": "makeResult() with missing stored fields",
+            "priority": "medium",
+            "reasoning": "No test verifying makeResult() handles documents where stored fields are undefined.",
+            "suggestedTest": "Create a search where _storedFields.get(docId) returns undefined and verify result is created correctly"
+          }
+        ],
+        "coverageEstimate": 65,
+        "summary": "Test coverage exists for basic filtering and the new complex query filtering test case, but significant gaps remain. The new test 'allows custom filtering of results in complex queries' validates the happy path but misses critical edge cases: filter execution count, score-based filtering behavior, exception handling, null/undefined filters, complex combineWith strategies, and makeResult() edge cases. Test coverage estimate is 65% - good for basic scenarios but insufficient for production robustness."
+      },
+      "refactorings": {
+        "file": "src/MiniSearch.ts",
+        "suggestions": [
+          {
+            "type": "extract-function",
+            "location": "Lines 1707-1715 in executeQuerySpec()",
+            "impact": "high",
+            "description": "Extract filter application logic into a private method to avoid duplication between search() and executeQuerySpec(). Currently, filter logic appears at lines 1707-1715 and similar logic exists in search().",
+            "before": "if (options.filter) {\n  for (const [docId, rawValue] of combined) {\n    const result = this.makeResult(docId, rawValue)\n    if (!options.filter(result)) combined.delete(docId)\n  }\n}",
+            "after": "if (options.filter) {\n  this.applyFilterToResults(combined, options.filter)\n}\n\nprivate applyFilterToResults(results: Map<number, RawResultValue>, filter: (result: SearchResult) => boolean): void {\n  for (const [docId, rawValue] of results) {\n    const result = this.makeResult(docId, rawValue)\n    if (!filter(result)) results.delete(docId)\n  }\n}",
+            "benefits": "Reduces code duplication, centralizes filter logic, makes future changes easier, improves code readability and maintainability"
+          },
+          {
+            "type": "extract-function",
+            "location": "Lines 1961-1962 in makeResult()",
+            "impact": "medium",
+            "description": "Extract quality calculation logic into its own method for reusability and testability.",
+            "before": "const quality = terms.length || 1\nconst result: SearchResult = {\n  id: this._documentIds.get(docId),\n  score: score * quality,\n  ...",
+            "after": "const quality = this.calculateQuality(terms)\nconst result: SearchResult = {\n  id: this._documentIds.get(docId),\n  score: score * quality,\n  ...\n}\n\nprivate calculateQuality(terms: string[]): number {\n  return terms.length || 1\n}",
+            "benefits": "Makes quality calculation testable independently, can be reused elsewhere, improves code organization and separation of concerns"
+          },
+          {
+            "type": "pattern-improvement",
+            "location": "Filter handling throughout executeQuerySpec() and search()",
+            "impact": "high",
+            "description": "Implement explicit filter delegation pattern where filters at different query levels have clear precedence rules, avoiding implicit double-filtering.",
+            "before": "const options = { ...searchOptions, filter: undefined, ...query, queries: undefined }\n// ... later\nif (options.filter) { /* apply filter */ }",
+            "after": "const { filter: combinationFilter, ...otherOptions } = query\nconst options = { ...searchOptions, ...otherOptions }\n// ... later\nif (combinationFilter) { /* apply only combination-level filter */ }",
+            "benefits": "Prevents implicit double-filtering, makes behavior predictable, easier to understand and maintain, reduces likelihood of bugs from filter confusion"
+          },
+          {
+            "type": "simplify",
+            "location": "Lines 1709-1712 in executeQuerySpec()",
+            "impact": "medium",
+            "description": "Simplify the filter application loop by pre-collecting items to delete rather than deleting during iteration.",
+            "before": "for (const [docId, rawValue] of combined) {\n  const result = this.makeResult(docId, rawValue)\n  if (!options.filter(result)) combined.delete(docId)\n}",
+            "after": "const toRemove = []\nfor (const [docId, rawValue] of combined) {\n  const result = this.makeResult(docId, rawValue)\n  if (!options.filter(result)) toRemove.push(docId)\n}\ntoRemove.forEach(docId => combined.delete(docId))",
+            "benefits": "More idiomatic JavaScript, safer from potential iterator invalidation issues, clearer intent, easier to understand logic flow"
+          },
+          {
+            "type": "modernize",
+            "location": "Line 1705 in executeQuerySpec()",
+            "impact": "low",
+            "description": "Use destructuring to extract filter from query options more explicitly instead of merging and then setting to undefined.",
+            "before": "const options = { ...searchOptions, filter: undefined, ...query, queries: undefined }",
+            "after": "const { filter: _, ...queryOptions } = query\nconst options = { ...searchOptions, ...queryOptions }\nconst combinationFilter = query.filter",
+            "benefits": "More explicit intent, easier to understand why filter is handled separately, clearer code without magic undefined values"
+          }
+        ],
+        "summary": "Five significant refactoring opportunities identified. The most impactful are: (1) extracting filter application logic into a reusable method to eliminate duplication, (2) implementing explicit filter delegation to prevent double-filtering confusion, and (3) extracting quality calculation for independent testability. These refactorings would improve code maintainability, reduce duplication, and prevent subtle bugs from implicit filter behavior."
+      }
+    },
+    {
+      "file": "src/MiniSearch.test.js",
+      "codeQuality": {
+        "file": "src/MiniSearch.test.js",
+        "issues": [
+          {
+            "line": 1254,
+            "severity": "medium",
+            "category": "best-practice",
+            "description": "New test 'allows custom filtering of results in complex queries' doesn't verify that the filter function is called the expected number of times. This misses a key behavioral aspect of the implementation.",
+            "suggestion": "Add a mock/spy for the filter function to verify call count and arguments. This ensures filters aren't called more times than expected and validates idempotency expectations."
+          },
+          {
+            "line": 1263,
+            "severity": "low",
+            "category": "style",
+            "description": "Test assertions could be more specific. The test verifies result count and categories but doesn't check the actual result objects in detail.",
+            "suggestion": "Add assertions to verify complete result structure: check ids, scores, terms, queryTerms, and match fields in addition to category."
+          },
+          {
+            "line": 1389,
+            "severity": "low",
+            "category": "best-practice",
+            "description": "Changed 'let' to 'const' on line 1389 (variable 'reference') is good practice but should be applied consistently throughout the test file.",
+            "suggestion": "Review entire test file for opportunities to replace 'let' with 'const' where variables are not reassigned."
+          }
+        ],
+        "overallScore": 76,
+        "summary": "The test file additions are generally well-structured and clean. The new test case validates the happy path for filtering with complex queries. However, the test could be strengthened by verifying filter execution frequency (a key concern in the PR) and by being more thorough in asserting result object structure. The const/let improvement is commendable. Overall code quality is good with minor opportunities for improvement."
+      },
+      "testCoverage": {
+        "file": "src/MiniSearch.test.js",
+        "hasTests": true,
+        "testFiles": [
+          "src/MiniSearch.test.js"
+        ],
+        "untestedPaths": [
+          {
+            "type": "edge-case",
+            "location": "Filter function call frequency in complex queries",
+            "priority": "critical",
+            "reasoning": "The PR author notes filters may be called multiple times. The test doesn't verify how many times filters are called with complex queries, which is crucial for understanding and validating filter behavior.",
+            "suggestedTest": "Add test with a spy/mock filter that tracks invocations: test('filter called expected number of times', () => { let callCount = 0; const filter = () => { callCount++; return true; }; search({ queries: [{queries: ['del'], filter}] }); expect(callCount).toBe(X); })"
+          },
+          {
+            "type": "edge-case",
+            "location": "Score-based filtering with complex queries",
+            "priority": "high",
+            "reasoning": "No test validates filtering based on score values at the complex query level. This is important because scores may differ from top-level search results.",
+            "suggestedTest": "search({ queries: [{ queries: ['del'], filter: (r) => r.score > 50 }] }) and verify results are correct and scores are consistent"
+          },
+          {
+            "type": "edge-case",
+            "location": "Filter function exceptions",
+            "priority": "high",
+            "reasoning": "No test verifies that errors thrown by filter functions are properly propagated.",
+            "suggestedTest": "test('filter exception propagates', () => { expect(() => search({ queries: [{ queries: ['del'], filter: () => { throw new Error('test') } }] })).toThrow() })"
+          },
+          {
+            "type": "edge-case",
+            "location": "Null/undefined filters in QueryCombination",
+            "priority": "medium",
+            "reasoning": "No test for how null or undefined filters are handled at the QueryCombination level.",
+            "suggestedTest": "search({ queries: [...], filter: null }) and search({ queries: [...], filter: undefined }) should both work without errors"
+          },
+          {
+            "type": "edge-case",
+            "location": "Filter with different combineWith strategies",
+            "priority": "medium",
+            "reasoning": "Current test uses default combineWith. No test validates filtering behavior with explicit 'AND' and 'OR' combine strategies.",
+            "suggestedTest": "Add tests: search({ combineWith: 'AND', queries: [{...filter...}] }) and search({ combineWith: 'OR', queries: [{...filter...}] })"
+          },
+          {
+            "type": "edge-case",
+            "location": "Filter returning false for all results",
+            "priority": "medium",
+            "reasoning": "No test validates behavior when filter rejects all results, resulting in empty result set.",
+            "suggestedTest": "search({ queries: [{ queries: ['del'], filter: () => false }] }) should return empty array"
+          },
+          {
+            "type": "edge-case",
+            "location": "Complex nested queries with multiple combinations",
+            "priority": "medium",
+            "reasoning": "Current test uses 2 simple sub-queries. No test for deeply nested queries or more complex combinations.",
+            "suggestedTest": "Add test with 3+ sub-queries and multiple nesting levels to validate filter behavior at different depths"
+          }
+        ],
+        "coverageEstimate": 62,
+        "summary": "Test coverage for the new filtering feature is minimal. The single new test validates the happy path with two simple queries and category filtering. However, critical gaps exist: (1) no verification of filter execution frequency (key concern from PR author), (2) no score-based filtering tests, (3) no exception handling tests, (4) no edge case tests for null/undefined filters or empty results, (5) no tests with different combineWith strategies. The test file has good existing coverage for basic filtering, but the new functionality needs much more comprehensive testing. Estimated coverage is 62% - adequate for basic scenarios but insufficient for production use."
+      },
+      "refactorings": {
+        "file": "src/MiniSearch.test.js",
+        "suggestions": [
+          {
+            "type": "pattern-improvement",
+            "location": "New test at line 1254-1270",
+            "impact": "medium",
+            "description": "Add mock/spy wrapper to filter function to verify execution frequency and arguments, addressing the PR author's concern about multiple filter invocations.",
+            "before": "it('allows custom filtering of results in complex queries', () => {\n  const results = ms.search({\n    queries: [\n      { queries: ['del'], filter: ({ category }) => category === 'poetry' },\n      { queries: ['como'], filter: ({ category }) => category === 'fiction' }\n    ]\n  })\n  expect(results.length).toBe(2)\n  expect(results.map(({ category }) => category).sort()).toEqual(['fiction', 'poetry'])\n})",
+            "after": "it('allows custom filtering of results in complex queries', () => {\n  let filterCalls = 0\n  const results = ms.search({\n    queries: [\n      { queries: ['del'], filter: (r) => { filterCalls++; return r.category === 'poetry' } },\n      { queries: ['como'], filter: (r) => { filterCalls++; return r.category === 'fiction' } }\n    ]\n  })\n  expect(results.length).toBe(2)\n  expect(results.map(({ category }) => category).sort()).toEqual(['fiction', 'poetry'])\n  expect(filterCalls).toBeGreaterThan(0)\n})",
+            "benefits": "Validates filter execution frequency, makes test more robust, documents expected behavior regarding multiple filter invocations, helps catch regressions"
+          },
+          {
+            "type": "extract-function",
+            "location": "Filter testing throughout MiniSearch.test.js",
+            "impact": "medium",
+            "description": "Create a test helper function to standardize filter testing patterns, reducing code duplication.",
+            "before": "const results = ms.search({\n  queries: [{ queries: ['del'], filter: ({ category }) => category === 'poetry' }]\n})\nexpect(results.length).toBe(1)\nexpect(results.every(({ category }) => category === 'poetry')).toBe(true)",
+            "after": "const filterTest = (queries, expectations) => {\n  const results = ms.search({ queries })\n  expect(results.length).toBe(expectations.count)\n  expectations.assertions.forEach(a => a(results))\n}\n\nfilterTest(\n  [{ queries: ['del'], filter: ({ category }) => category === 'poetry' }],\n  { count: 1, assertions: [r => expect(r.every(({ category }) => category === 'poetry')).toBe(true)] }\n)",
+            "benefits": "Reduces test code duplication, makes it easier to add more filter tests consistently, improves maintainability"
+          },
+          {
+            "type": "simplify",
+            "location": "New test assertions at lines 1263-1265",
+            "impact": "low",
+            "description": "Simplify the assertion checking category by using a more idiomatic pattern.",
+            "before": "expect(results.map(({ category }) => category).sort()).toEqual(['fiction', 'poetry'])",
+            "after": "const categories = results.map(r => r.category).sort()\nexpect(categories).toEqual(['fiction', 'poetry'])\nresults.forEach(r => expect(['fiction', 'poetry']).toContain(r.category))",
+            "benefits": "More readable, explicitly validates that each result has an expected category, easier to debug if assertion fails"
+          },
+          {
+            "type": "modernize",
+            "location": "Line 1389 and throughout test file",
+            "impact": "low",
+            "description": "Consistently use 'const' instead of 'let' for all variable declarations that are not reassigned, as already done on line 1389.",
+            "before": "let reference = ms.search(...)\nlet results = ms.search(...)",
+            "after": "const reference = ms.search(...)\nconst results = ms.search(...)",
+            "benefits": "Consistency with modern JavaScript best practices, signals intent to readers, helps prevent accidental reassignments"
+          }
+        ],
+        "summary": "Four refactoring opportunities identified for improving test quality and maintainability. The most impactful is adding filter call tracking to validate the new filtering behavior and document expectations about multiple filter invocations. Additional improvements include creating test helper functions to reduce duplication, simplifying assertions for readability, and ensuring consistent use of const throughout the test file."
+      }
+    }
+  ],
+  "summary": {
+    "totalFiles": 2,
+    "overallScore": 70,
+    "criticalIssues": 2,
+    "highPriorityTests": 3,
+    "refactoringOpportunities": 9
+  },
+  "recommendations": [
+    {
+      "priority": "critical",
+      "category": "Bug Risk / Breaking Changes",
+      "description": "Address the score timing inconsistency issue by ensuring quality calculations are applied consistently and documented. If users filter on score values, they need to know when scores are finalized relative to filtering. Consider applying quality calculation as the final step before returning results to ensure predictable behavior when filtering on scores.",
+      "files": [
+        "src/MiniSearch.ts"
+      ]
+    },
+    {
+      "priority": "critical",
+      "category": "Documentation",
+      "description": "Add comprehensive documentation in JSDoc comments and CHANGELOG about filter function behavior: (1) filters may be called multiple times in complex queries, (2) filter functions should be pure and idempotent, (3) scores are finalized at a specific point in the pipeline. Add example code showing filtering at different query levels with expected behavior.",
+      "files": [
+        "src/MiniSearch.ts"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Test Coverage",
+      "description": "Add comprehensive tests covering: (1) filter execution count verification for complex queries, (2) score-based filtering validation, (3) exception handling in filter functions, (4) complex nested query combinations with multiple combineWith strategies, (5) null/undefined filter handling at QueryCombination level, (6) filter returning false for all results.",
+      "files": [
+        "src/MiniSearch.test.js"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Code Quality",
+      "description": "Extract the filter application logic into a private method (e.g., applyFilterToResults()) to prevent duplication between executeQuerySpec() and search() methods. This addresses the implicit double-filtering behavior and centralizes filter logic.",
+      "files": [
+        "src/MiniSearch.ts"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Design Pattern",
+      "description": "Implement explicit filter delegation pattern to clarify when filters are applied at different query levels. Currently, filters at both combination and search levels create implicit behavior that could surprise users. Make precedence rules explicit in the code.",
+      "files": [
+        "src/MiniSearch.ts"
+      ]
+    },
+    {
+      "priority": "medium",
+      "category": "Maintainability",
+      "description": "Add explanatory comments clarifying why filter is set to undefined in the options merge (line 1705) and why filters are applied after combining results. This prevents future confusion about the double-filtering behavior.",
+      "files": [
+        "src/MiniSearch.ts"
+      ]
+    },
+    {
+      "priority": "medium",
+      "category": "Code Organization",
+      "description": "Extract quality calculation logic into its own private method (calculateQuality) for independent testability and reusability. This improves code organization and separation of concerns.",
+      "files": [
+        "src/MiniSearch.ts"
+      ]
+    },
+    {
+      "priority": "medium",
+      "category": "Test Quality",
+      "description": "Add filter call tracking/mocking to the new test case to verify filter execution frequency. This addresses the PR author's concern about filters being called multiple times and ensures the test validates key behavioral aspects.",
+      "files": [
+        "src/MiniSearch.test.js"
+      ]
+    }
+  ],
+  "metadata": {
+    "analyzedAt": "2026-11-18T10:37:51.955Z",
+    "duration": 198650,
+    "agentVersions": {
+      "general-purpose": "1.0.0",
+      "code-quality-analyzer": "1.0.0",
+      "test-coverage-analyzer": "1.0.0",
+      "refactoring-suggester": "1.0.0"
+    }
+  }
+}

@@ -1,0 +1,242 @@
+{
+  "pullRequest": {
+    "owner": "octocat",
+    "repo": "Hello-World",
+    "number": 1
+  },
+  "fileReviews": [
+    {
+      "file": "README",
+      "codeQuality": {
+        "file": "README",
+        "issues": [
+          {
+            "line": 1,
+            "severity": "critical",
+            "category": "maintainability",
+            "description": "Missing essential README sections",
+            "suggestion": "A proper README should include: project title, description, installation instructions, usage examples, contributing guidelines, and license information. Currently only contains fragmented command examples."
+          },
+          {
+            "line": 2,
+            "severity": "high",
+            "category": "style",
+            "description": "Command formatting is broken and unreadable",
+            "suggestion": "Commands and their descriptions are concatenated without proper separation. Use code blocks with markdown formatting:\n```bash\n$ mkdir ~/Hello-World\n```\nFollowed by a separate line explaining: 'Creates a directory for your project called \"Hello-World\" in your user directory'"
+          },
+          {
+            "line": 2,
+            "severity": "high",
+            "category": "maintainability",
+            "description": "Missing whitespace and line breaks between commands",
+            "suggestion": "Each command should be on its own line with proper spacing. Add blank lines between command blocks for readability."
+          },
+          {
+            "line": 1,
+            "severity": "medium",
+            "category": "best-practice",
+            "description": "Missing project title and description",
+            "suggestion": "Start with a clear project title (using # heading) and a brief description of what the project does."
+          },
+          {
+            "line": 2,
+            "severity": "medium",
+            "category": "maintainability",
+            "description": "No markdown formatting used",
+            "suggestion": "Use proper markdown syntax: headings (# ## ###), code blocks (```bash), bullet points, and formatting to improve readability and structure."
+          },
+          {
+            "line": 5,
+            "severity": "medium",
+            "category": "best-practice",
+            "description": "Hard-coded user path in example output",
+            "suggestion": "Replace '/Users/your_user_directory/Hello-World/.git/' with a placeholder like '/Users/<username>/Hello-World/.git/' or '/path/to/Hello-World/.git/' to make it clearer this is an example."
+          },
+          {
+            "line": 6,
+            "severity": "low",
+            "category": "maintainability",
+            "description": "Incomplete documentation - abrupt ending",
+            "suggestion": "The file ends with 'touch README' without explanation of next steps or purpose. Add context about what to do after creating the README file."
+          },
+          {
+            "line": 0,
+            "severity": "low",
+            "category": "best-practice",
+            "description": "Missing badges, links, or additional metadata",
+            "suggestion": "Consider adding badges (build status, license, version), table of contents for longer READMEs, links to documentation, and contact information."
+          },
+          {
+            "line": 1,
+            "severity": "info",
+            "category": "style",
+            "description": "'Hello World!' appears disconnected from rest of content",
+            "suggestion": "If 'Hello World!' is the project title, format it as a heading (# Hello World!). If it's just placeholder text, replace with actual project information."
+          }
+        ],
+        "overallScore": 25,
+        "summary": "This README file has significant quality issues with an overall score of 25/100. The most critical problems are: (1) Missing essential README sections like project description, installation, and usage instructions, (2) Severely broken command formatting where commands and descriptions are concatenated without proper line breaks, and (3) Complete absence of markdown formatting. The file appears to be a rough draft or accidentally malformed during editing."
+      },
+      "testCoverage": {
+        "file": "README",
+        "hasTests": false,
+        "testFiles": [],
+        "untestedPaths": [
+          {
+            "type": "edge-case",
+            "location": "mkdir command and directory creation",
+            "priority": "critical",
+            "reasoning": "Users may fail to create directories if filesystem permissions are incorrect or if paths are invalid",
+            "suggestedTest": "integration-test-directory-creation"
+          },
+          {
+            "type": "edge-case",
+            "location": "git init command and repository initialization",
+            "priority": "critical",
+            "reasoning": "Git may not be installed or configured, causing the command to fail silently",
+            "suggestedTest": "integration-test-git-init"
+          },
+          {
+            "type": "edge-case",
+            "location": "touch README command",
+            "priority": "critical",
+            "reasoning": "File creation may fail on certain systems or with permission restrictions",
+            "suggestedTest": "integration-test-file-creation"
+          },
+          {
+            "type": "edge-case",
+            "location": "Path expansion ~/Hello-World",
+            "priority": "high",
+            "reasoning": "Tilde expansion may not work consistently across shells and operating systems",
+            "suggestedTest": "test-path-expansion"
+          },
+          {
+            "type": "branch",
+            "location": "Command output verification",
+            "priority": "high",
+            "reasoning": "Output message 'Initialized empty Git repository in /Users/your_user_directory/Hello-World/.git/' should be verified as actual",
+            "suggestedTest": "test-git-output-validation"
+          },
+          {
+            "type": "function",
+            "location": "Complete sequence of commands",
+            "priority": "medium",
+            "reasoning": "The commands should be executed in order to verify they work together as documented",
+            "suggestedTest": "integration-test-full-sequence"
+          }
+        ],
+        "coverageEstimate": 0,
+        "summary": "README has 0% test coverage. Contains critical paths that should be verified: installation commands, environment configuration, CLI commands, and documented success criteria. All setup instructions and example commands are untested and may fail silently for users. The commands and instructions referenced in the documentation are not automated, making it difficult for users to self-verify that the setup was successful."
+      },
+      "refactorings": {
+        "file": "README",
+        "suggestions": [
+          {
+            "type": "simplify",
+            "location": "Lines 2-4: Command block formatting",
+            "impact": "high",
+            "description": "Restructure concatenated commands and descriptions into separate, properly formatted code blocks with explanations",
+            "before": "$ mkdir ~/Hello-WorldCreates a directory for your project called \"Hello-World\" in your user directory\n$ cd ~/Hello-WorldChanges the current working directory to your newly created directory\n$ git initSets up the necessary Git files",
+            "after": "```bash\n$ mkdir ~/Hello-World\n```\nCreates a directory for your project called \"Hello-World\" in your user directory\n\n```bash\n$ cd ~/Hello-World\n```\nChanges the current working directory to your newly created directory\n\n```bash\n$ git init\n```\nSets up the necessary Git files",
+            "benefits": "Dramatically improves readability, allows users to copy-paste commands directly, creates clear separation between instructions and explanations"
+          },
+          {
+            "type": "modernize",
+            "location": "Line 1: Document title and structure",
+            "impact": "high",
+            "description": "Add proper markdown heading structure and project description",
+            "before": "Hello World!",
+            "after": "# Hello World!\n\n## Project Setup Guide\n\nThis guide walks you through setting up a Git repository from scratch.\n\n## Prerequisites\n\n- Git installed on your system\n- Unix-like shell (Bash, Zsh, etc.)\n- Write permissions to your home directory\n\n## Installation",
+            "benefits": "Creates proper document hierarchy, sets context for users, provides clear structure for navigation"
+          },
+          {
+            "type": "extract-function",
+            "location": "Lines 2-7: Individual command explanations",
+            "impact": "medium",
+            "description": "Create a structured section for each command with consistent formatting",
+            "before": "Initialized empty Git repository in /Users/your_user_directory/Hello-World/.git/\n$ touch README",
+            "after": "## Step-by-Step Instructions\n\n### Step 1: Create Project Directory\n```bash\n$ mkdir ~/Hello-World\n```\nThis creates a new directory in your home folder.\n\n### Step 2: Navigate to Directory\n```bash\n$ cd ~/Hello-World\n```\n\n### Step 3: Initialize Git Repository\n```bash\n$ git init\n```\nExpected output:\n```\nInitialized empty Git repository in /path/to/Hello-World/.git/\n```\n\n### Step 4: Create README File\n```bash\n$ touch README\n```\nThis creates an empty README file for your project.",
+            "benefits": "Provides clear step-by-step progression, sets expectations with output examples, easier to follow and reference"
+          },
+          {
+            "type": "pattern-improvement",
+            "location": "Throughout file: Whitespace and formatting",
+            "impact": "high",
+            "description": "Add proper blank lines between sections and consistent spacing throughout",
+            "before": "$ git initSets up the necessary Git files\nInitialized empty Git repository in /Users/your_user_directory/Hello-World/.git/\n$ touch README",
+            "after": "$ git init\n\n# Sets up the necessary Git files\n# Output: Initialized empty Git repository in /path/to/Hello-World/.git/\n\n$ touch README\n\n# Creates a README file for documentation",
+            "benefits": "Significantly improves readability, allows the eye to parse information more easily, creates visual hierarchy"
+          },
+          {
+            "type": "modernize",
+            "location": "Throughout file: Path placeholders",
+            "impact": "medium",
+            "description": "Replace hard-coded paths with generic placeholders that work across different systems",
+            "before": "/Users/your_user_directory/Hello-World/.git/",
+            "after": "/path/to/Hello-World/.git/\n# or on your system:\n# ~/Hello-World/.git/",
+            "benefits": "Makes examples more universally applicable, reduces confusion about system-specific paths"
+          }
+        ],
+        "summary": "The README requires substantial refactoring to meet documentation standards. Key improvements include: (1) Proper markdown formatting with code blocks and headings, (2) Restructuring with essential sections (title, description, installation, usage, contributing, license), (3) Separating commands from descriptions with clear formatting, (4) Adding proper whitespace and line breaks, and (5) Providing context and explanations for each step. The file is currently non-functional as documentation and needs comprehensive restructuring before it can be effective for users."
+      }
+    }
+  ],
+  "summary": {
+    "totalFiles": 1,
+    "overallScore": 25,
+    "criticalIssues": 2,
+    "highPriorityTests": 3,
+    "refactoringOpportunities": 5
+  },
+  "recommendations": [
+    {
+      "priority": "critical",
+      "category": "Documentation Structure",
+      "description": "README requires complete restructuring with proper markdown formatting, section headers, and hierarchical organization. Current state is non-functional with concatenated commands and no formatting.",
+      "files": [
+        "README"
+      ]
+    },
+    {
+      "priority": "critical",
+      "category": "Command Formatting",
+      "description": "Separate all commands from their descriptions and place each in proper markdown code blocks. Currently commands are concatenated directly with descriptions, making them unusable.",
+      "files": [
+        "README"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Test Coverage",
+      "description": "Add integration tests to verify that all documented commands (mkdir, cd, git init, touch) work correctly on target systems. Currently 0% coverage.",
+      "files": [
+        "README"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Documentation Completeness",
+      "description": "Add missing standard README sections: project title, description, prerequisites, installation, usage, troubleshooting, and license information.",
+      "files": [
+        "README"
+      ]
+    },
+    {
+      "priority": "medium",
+      "category": "Path and Output Examples",
+      "description": "Replace hard-coded paths like '/Users/your_user_directory/' with generic placeholders and add expected output examples for user verification.",
+      "files": [
+        "README"
+      ]
+    }
+  ],
+  "metadata": {
+    "analyzedAt": "2026-11-18T15:51:50.465Z",
+    "duration": 163851,
+    "agentVersions": {
+      "code-quality-analyzer": "1.0.0",
+      "test-coverage-analyzer": "1.0.0",
+      "refactoring-suggester": "1.0.0"
+    }
+  }
+}

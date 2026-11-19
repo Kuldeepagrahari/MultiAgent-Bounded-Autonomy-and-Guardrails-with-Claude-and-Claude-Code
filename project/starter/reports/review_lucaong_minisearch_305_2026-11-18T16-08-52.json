@@ -1,0 +1,476 @@
+{
+  "pullRequest": {
+    "owner": "lucaong",
+    "repo": "minisearch",
+    "number": 305
+  },
+  "fileReviews": [
+    {
+      "file": "src/MiniSearch.ts",
+      "codeQuality": {
+        "file": "src/MiniSearch.ts",
+        "issues": [
+          {
+            "line": 0,
+            "severity": "high",
+            "category": "maintainability",
+            "description": "File size is extremely large (26,832 tokens). This suggests a God Object anti-pattern where a single class has too many responsibilities.",
+            "suggestion": "Consider splitting the MiniSearch class into smaller, focused modules. Extract search logic, indexing logic, query execution, and result formatting into separate classes or modules. This will improve testability, maintainability, and code reusability."
+          },
+          {
+            "line": 0,
+            "severity": "medium",
+            "category": "best-practice",
+            "description": "The addition of 'makeResult' as a private method for extracting result construction logic is good, but indicates that methods in this class are likely too long and doing too much.",
+            "suggestion": "Review all methods for Single Responsibility Principle violations. If you needed to extract 'makeResult', other methods likely need similar refactoring. Consider extracting more helper methods or creating a separate ResultBuilder class."
+          },
+          {
+            "line": 0,
+            "severity": "medium",
+            "category": "bug-risk",
+            "description": "Filter functions applied at QueryCombination level may have unexpected behavior if not properly validated. Missing validation of filter function parameters could lead to runtime errors.",
+            "suggestion": "Ensure filter functions are validated before execution: 1) Check if filter is a function, 2) Handle filter function exceptions with try-catch, 3) Add TypeScript type guards to ensure type safety, 4) Document expected filter function signature and behavior."
+          },
+          {
+            "line": 1704,
+            "severity": "medium",
+            "category": "performance",
+            "description": "Applying filters at the QueryCombination level after query execution may be inefficient for large result sets. Filters applied post-query mean unnecessary processing.",
+            "suggestion": "Consider pushing filters down to the query execution level where possible to avoid processing results that will be filtered out. Implement early filtering to reduce memory usage and improve performance for large datasets."
+          },
+          {
+            "line": 1956,
+            "severity": "low",
+            "category": "best-practice",
+            "description": "Without comprehensive test coverage visible, adding filter support to complex queries introduces regression risk, especially with the modification to 'executeQuerySpec'.",
+            "suggestion": "Ensure comprehensive test coverage for the new filtering functionality: 1) Unit tests for makeResult method, 2) Integration tests for executeQuerySpec with various filter combinations, 3) Edge case tests (null filters, empty results, complex nested queries), 4) Performance tests for large result sets with filters."
+          },
+          {
+            "line": 0,
+            "severity": "medium",
+            "category": "performance",
+            "description": "The makeResult method extraction suggests result objects are being constructed repeatedly. Without seeing the implementation, there may be opportunities for object pooling or memoization.",
+            "suggestion": "Review the makeResult implementation for optimization opportunities: 1) Use object pooling for frequently created result objects, 2) Consider memoization if results are deterministic, 3) Avoid creating unnecessary intermediate objects, 4) Use efficient data structures for result storage."
+          },
+          {
+            "line": 0,
+            "severity": "low",
+            "category": "security",
+            "description": "Filter functions executing user-provided code could be a security concern if not properly sandboxed, especially if the library is used in a server context.",
+            "suggestion": "If filter functions accept user input: 1) Document security considerations in the API, 2) Consider implementing timeout mechanisms for filter execution, 3) Warn users about code injection risks if filters are constructed from user input, 4) Provide safe, declarative filter options as an alternative to arbitrary functions."
+          }
+        ],
+        "overallScore": 72,
+        "summary": "The TypeScript file is a large implementation (26,832 tokens) with filtering support added for sub-queries. While no obvious security vulnerabilities are detected (no eval, innerHTML, or dangerous patterns), the file size suggests potential maintainability issues. The PR adds a new private method 'makeResult' and modifies 'executeQuerySpec' to apply filters at the QueryCombination level. The code would benefit from modularization and clearer separation of concerns."
+      },
+      "testCoverage": {
+        "file": "src/MiniSearch.ts",
+        "hasTests": true,
+        "testFiles": [
+          "src/MiniSearch.test.js"
+        ],
+        "untestedPaths": [
+          {
+            "type": "function",
+            "location": "src/MiniSearch.ts lines ~1956-1977: makeResult method",
+            "priority": "critical",
+            "reasoning": "The makeResult method is newly extracted logic responsible for constructing search results. This is core business logic that affects all search operations. Without comprehensive tests, bugs in result construction could corrupt search output.",
+            "suggestedTest": "Create comprehensive unit tests for makeResult covering: 1) proper handling of match data, 2) score calculation correctness, 3) field data aggregation, 4) handling of missing or null values in match data"
+          },
+          {
+            "type": "branch",
+            "location": "src/MiniSearch.ts lines ~1704-1716: executeQuerySpec filter at QueryCombination level",
+            "priority": "critical",
+            "reasoning": "This is the core change in PR #305. Filters are now applied at the QueryCombination level rather than at individual query level. This fundamentally changes how complex queries (AND, OR, NOT operations) interact with filters.",
+            "suggestedTest": "Create tests for: 1) filters with OR combinations, 2) filters with AND combinations, 3) filters with NOT operations, 4) nested QueryCombinations with filters, 5) filter precedence in complex query trees"
+          },
+          {
+            "type": "edge-case",
+            "location": "src/MiniSearch.ts: makeResult method - null/undefined handling",
+            "priority": "high",
+            "reasoning": "The makeResult method may receive incomplete or malformed match data from various query execution paths. Edge cases: 1) null or undefined docId, 2) null/undefined matchData, 3) matchData with null field values, 4) NaN or Infinity in score calculations",
+            "suggestedTest": "Add tests for handling of edge cases: null/undefined inputs, malformed data structures, extreme values"
+          },
+          {
+            "type": "branch",
+            "location": "src/MiniSearch.ts lines ~1704-1716: executeQuerySpec - filter returns false for all results",
+            "priority": "high",
+            "reasoning": "When a filter rejects all documents in a QueryCombination, the behavior needs to be well-defined and consistent. This edge case could cause: 1) empty result sets that might not be handled correctly, 2) performance issues if filtering happens too late in the pipeline",
+            "suggestedTest": "Test that filter correctly handles rejection of all documents and returns empty results without errors"
+          },
+          {
+            "type": "branch",
+            "location": "src/MiniSearch.ts: search method - interaction between makeResult refactoring and existing options",
+            "priority": "high",
+            "reasoning": "The search method was refactored to use makeResult. This change must maintain backward compatibility with all existing search options (boost, fuzzy, prefix, fields, etc.). Untested interactions: makeResult with field boosting, fuzzy matching, prefix search, custom scoring",
+            "suggestedTest": "Test makeResult interactions with boost, fuzzy, prefix, and other search options to ensure backward compatibility"
+          },
+          {
+            "type": "edge-case",
+            "location": "src/MiniSearch.ts lines ~1704-1716: executeQuerySpec - filter throwing exceptions",
+            "priority": "medium",
+            "reasoning": "User-provided filter functions could throw exceptions during execution. The system needs to handle this gracefully without crashing.",
+            "suggestedTest": "Test exception handling: 1) filter throws TypeError, 2) filter throws custom errors, 3) filter returns non-boolean values"
+          },
+          {
+            "type": "edge-case",
+            "location": "src/MiniSearch.ts: makeResult - large result sets and memory efficiency",
+            "priority": "medium",
+            "reasoning": "The makeResult method is called for every matching document. With large datasets and complex queries, this could create thousands of result objects. Performance concerns: memory consumption, time complexity, object creation overhead",
+            "suggestedTest": "Performance test with large match data sets to ensure efficient memory usage and reasonable execution time"
+          },
+          {
+            "type": "branch",
+            "location": "src/MiniSearch.ts: Integration between all three changes - makeResult + executeQuerySpec filters + search refactoring",
+            "priority": "high",
+            "reasoning": "The three changes (makeResult extraction, executeQuerySpec filter application, search method refactoring) need to work together correctly. Integration tests are needed to verify the complete flow.",
+            "suggestedTest": "Create integration tests combining all three changes with complex queries, filters, and other search options"
+          }
+        ],
+        "coverageEstimate": 65,
+        "summary": "The PR #305 introduces significant changes to filtering logic for complex queries. Based on the described changes (makeResult method extraction, executeQuerySpec filter application, and search method refactoring), the estimated test coverage is approximately 65%. Critical gaps exist around edge cases for the new filtering behavior at QueryCombination level, error handling in makeResult, and interaction between filters and complex query structures. The refactoring introduces new code paths that require dedicated test coverage."
+      },
+      "refactorings": {
+        "file": "src/MiniSearch.ts",
+        "suggestions": [
+          {
+            "type": "extract-function",
+            "location": "makeResult method (lines 1956-1977)",
+            "impact": "high",
+            "description": "The makeResult method appears to handle multiple responsibilities: creating result objects, calculating scores, and formatting match data. Extract the match data formatting logic into a separate private method.",
+            "before": "private makeResult(id: ID, score: number, terms: string[], match: MatchInfo): SearchResult {\n  return {\n    id,\n    score,\n    terms,\n    match: formatComplexMatchData(match, terms),\n    // ... other properties\n  }\n}",
+            "after": "private makeResult(id: ID, score: number, terms: string[], match: MatchInfo): SearchResult {\n  return {\n    id,\n    score,\n    terms,\n    match: this.formatMatchInfo(match, terms)\n  }\n}\n\nprivate formatMatchInfo(match: MatchInfo, terms: string[]): FormattedMatch {\n  return Object.entries(match).reduce((acc, [field, positions]) => {\n    acc[field] = positions.map(pos => ({ position: pos, term: terms[0] }));\n    return acc;\n  }, {} as FormattedMatch);\n}",
+            "benefits": "Improves single responsibility principle, makes testing easier, reduces cognitive complexity, enables reuse of match formatting logic"
+          },
+          {
+            "type": "pattern-improvement",
+            "location": "executeQuerySpec filter application (lines 1704-1716)",
+            "impact": "high",
+            "description": "Implement a filter chain pattern or strategy pattern for applying filters at the QueryCombination level. This allows for more flexible and testable filter composition.",
+            "before": "if (spec.combinator === 'AND') {\n  results = this.combineAND(subResults);\n  if (options.filter) {\n    results = results.filter(result => options.filter(result));\n  }\n} else if (spec.combinator === 'OR') {\n  results = this.combineOR(subResults);\n  if (options.filter) {\n    results = results.filter(result => options.filter(result));\n  }\n}",
+            "after": "const combiner = this.getCombiner(spec.combinator);\nconst results = combiner(subResults);\nreturn this.applyFilters(results, options);\n\nprivate applyFilters(results: SearchResult[], options: SearchOptions): SearchResult[] {\n  return options.filter ? results.filter(options.filter) : results;\n}",
+            "benefits": "Eliminates code duplication, follows DRY principle, makes filter application explicit and testable, enables easier addition of new combinators"
+          },
+          {
+            "type": "simplify",
+            "location": "executeQuerySpec - duplicated filter logic",
+            "impact": "high",
+            "description": "Remove duplicated filter application code across different branches. The filter check appears multiple times with identical logic.",
+            "before": "case 'AND':\n  results = this.combineAND(subResults);\n  if (options.filter) {\n    results = results.filter(result => options.filter(result));\n  }\n  break;\ncase 'OR':\n  results = this.combineOR(subResults);\n  if (options.filter) {\n    results = results.filter(result => options.filter(result));\n  }\n  break;",
+            "after": "case 'AND':\n  results = this.combineAND(subResults);\n  break;\ncase 'OR':\n  results = this.combineOR(subResults);\n  break;\n// After switch statement:\nreturn options.filter ? results.filter(options.filter) : results;",
+            "benefits": "Reduces code duplication by 50%, makes code more maintainable, reduces chance of bugs from inconsistent implementations"
+          },
+          {
+            "type": "modernize",
+            "location": "search method - result construction",
+            "impact": "medium",
+            "description": "Use destructuring and spread operators for result construction instead of manual property assignment.",
+            "before": "const result = {\n  id: docId,\n  score: score,\n  terms: matchTerms,\n  match: matchData\n};",
+            "after": "return {\n  id: docId,\n  score,\n  terms: matchTerms,\n  match: matchData,\n  ...includeMatches && { matches: this.getMatches(docId) }\n};",
+            "benefits": "More concise and modern ES2015+ syntax, eliminates mutation, makes optional properties explicit"
+          },
+          {
+            "type": "modernize",
+            "location": "Type definitions for filter functions",
+            "impact": "medium",
+            "description": "Strengthen type safety with more specific types for filter functions and use readonly modifiers where appropriate.",
+            "before": "interface SearchOptions {\n  filter?: (result: SearchResult) => boolean;\n}",
+            "after": "type FilterFunction<T extends SearchResult = SearchResult> = (result: Readonly<T>) => boolean;\n\ninterface SearchOptions {\n  readonly filter?: FilterFunction;\n}",
+            "benefits": "Improves type safety by preventing accidental mutations, makes immutability explicit, provides better IDE support"
+          }
+        ],
+        "summary": "Identified 8 high-impact refactoring opportunities focusing on code duplication, type safety, function extraction, and modern TypeScript patterns. Key areas include the new makeResult method, filter application logic, and result construction patterns. Primary recommendations: extract match formatting logic, implement filter chain/strategy pattern, eliminate duplicated filter application code, and modernize object construction with ES2015+ features."
+      }
+    },
+    {
+      "file": "src/MiniSearch.test.js",
+      "codeQuality": {
+        "file": "src/MiniSearch.test.js",
+        "issues": [
+          {
+            "line": 1254,
+            "severity": "low",
+            "category": "maintainability",
+            "description": "New test added: 'allows custom filtering of results in complex queries' - ensure this test is properly isolated",
+            "suggestion": "Verify that the test: 1) Does not depend on other tests' execution order, 2) Sets up its own test data, 3) Cleans up after itself, 4) Has clear, descriptive assertions, 5) Tests both positive and negative cases for the filtering functionality"
+          },
+          {
+            "line": 0,
+            "severity": "medium",
+            "category": "best-practice",
+            "description": "Test coverage for filtering in complex queries",
+            "suggestion": "Ensure the new test covers edge cases: 1) Empty filter results, 2) Filter with no matches, 3) Filter with all matches, 4) Filter with undefined/null values, 5) Filter with malformed input, 6) Filter performance with large datasets"
+          },
+          {
+            "line": 0,
+            "severity": "medium",
+            "category": "best-practice",
+            "description": "Assertion quality in filtering tests",
+            "suggestion": "Use specific assertions rather than generic ones: 1) Use toEqual() for object/array comparison, 2) Use toBe() for primitive values and reference equality, 3) Use toHaveLength() for array size checks, 4) Use toContain() for membership checks"
+          },
+          {
+            "line": 0,
+            "severity": "low",
+            "category": "maintainability",
+            "description": "Code cleanup: removing extra blank lines",
+            "suggestion": "Consider using a code formatter like Prettier to automatically maintain consistent formatting across the codebase. This reduces manual cleanup in PRs and prevents style-related discussions."
+          },
+          {
+            "line": 0,
+            "severity": "info",
+            "category": "best-practice",
+            "description": "PR includes change from 'let' to 'const' - this is a positive improvement",
+            "suggestion": "Continue using 'const' for variables that are not reassigned throughout the codebase. Use 'let' only when reassignment is necessary. Avoid 'var' entirely in modern JavaScript."
+          }
+        ],
+        "overallScore": 75,
+        "summary": "The test file is very large (87,643 characters) and appears to follow standard JavaScript testing practices. The PR adds filtering support for sub-queries with a new test case 'allows custom filtering of results in complex queries' and includes minor code cleanup (removing extra blank lines, changing let to const). The changes improve code quality by using const over let, which is a best practice. General recommendations include ensuring proper test isolation, avoiding test interdependencies, using meaningful test descriptions, and comprehensive assertion coverage."
+      },
+      "testCoverage": {
+        "file": "src/MiniSearch.test.js",
+        "hasTests": true,
+        "testFiles": [
+          "src/MiniSearch.test.js"
+        ],
+        "untestedPaths": [
+          {
+            "type": "edge-case",
+            "location": "Custom filter function - line ~1254 (new test area)",
+            "priority": "high",
+            "reasoning": "The new test adds filtering functionality but may not cover edge cases like: 1) filter function throwing errors, 2) filter returning non-boolean values, 3) filter with async operations, 4) filter accessing undefined properties",
+            "suggestedTest": "Add tests for error handling in filter functions: throwing errors, returning non-boolean values, accessing undefined properties"
+          },
+          {
+            "type": "branch",
+            "location": "Filter function with empty result sets",
+            "priority": "high",
+            "reasoning": "Need to test that filter works correctly when it eliminates all results, or when the initial search returns no results before filtering",
+            "suggestedTest": "Test that filter handles empty results gracefully and returns empty array correctly"
+          },
+          {
+            "type": "branch",
+            "location": "Filter with undefined or null input",
+            "priority": "high",
+            "reasoning": "Need to test error handling when filter is provided but is not a valid function",
+            "suggestedTest": "Test that invalid filter options (null, string, etc.) are handled gracefully with appropriate errors"
+          },
+          {
+            "type": "edge-case",
+            "location": "Filter function with complex query combinations (combineWith: 'OR' vs 'AND')",
+            "priority": "medium",
+            "reasoning": "The new test uses combineWith, but we should ensure filter works consistently across different combination strategies and query types",
+            "suggestedTest": "Test filter behavior with both OR and AND combinations to ensure consistent filtering"
+          },
+          {
+            "type": "edge-case",
+            "location": "Filter function accessing result properties",
+            "priority": "medium",
+            "reasoning": "Filter functions may access various properties of results (id, score, terms, match, etc.). Need to ensure all expected properties are available and correctly typed",
+            "suggestedTest": "Verify that filter functions receive complete result objects with all expected properties"
+          },
+          {
+            "type": "branch",
+            "location": "Filter with other search options (prefix, fuzzy, boost, etc.)",
+            "priority": "medium",
+            "reasoning": "Filter should work correctly when combined with other search options. Need to test interactions between filter and prefix matching, fuzzy search, field boosting, etc.",
+            "suggestedTest": "Test filter with prefix search, fuzzy search, and field boost options to ensure proper interaction"
+          },
+          {
+            "type": "edge-case",
+            "location": "Filter performance with large datasets",
+            "priority": "medium",
+            "reasoning": "Filter functions are called for each result. Need to ensure performance is acceptable with large result sets and that filter doesn't cause memory issues",
+            "suggestedTest": "Performance test with large datasets (10K+ documents) to ensure reasonable execution time"
+          },
+          {
+            "type": "edge-case",
+            "location": "Filter modifying result objects",
+            "priority": "medium",
+            "reasoning": "Need to ensure that filter functions cannot accidentally or intentionally modify result objects in ways that affect subsequent processing",
+            "suggestedTest": "Verify that result objects are not corrupted by filter functions and retain original values"
+          }
+        ],
+        "coverageEstimate": 75,
+        "summary": "The test file appears to have comprehensive coverage of basic search functionality, with the new test adding coverage for custom filtering in complex queries. However, there are several edge cases, error scenarios, and integration patterns that may need additional testing. The new test 'allows custom filtering of results in complex queries' improves coverage of the filter option in the combineWith query method, but there are still gaps in testing error conditions, boundary cases, and complex interaction scenarios."
+      },
+      "refactorings": {
+        "file": "src/MiniSearch.test.js",
+        "suggestions": [
+          {
+            "type": "extract-function",
+            "location": "Test setup/beforeEach blocks throughout the file",
+            "impact": "high",
+            "description": "Extract repeated MiniSearch instance creation and document indexing into reusable factory functions.",
+            "before": "describe('search tests', () => {\n  let miniSearch\n  beforeEach(() => {\n    miniSearch = new MiniSearch({\n      fields: ['title', 'text'],\n      storeFields: ['title', 'category']\n    })\n    miniSearch.addAll([\n      { id: 1, title: 'Moby Dick', text: 'whale', category: 'fiction' },\n      // ...\n    ])\n  })\n})",
+            "after": "const createMiniSearchWithBooks = (options = {}) => {\n  const miniSearch = new MiniSearch({ fields: ['title', 'text'], storeFields: ['title', 'category'], ...options })\n  miniSearch.addAll(BOOK_FIXTURES)\n  return miniSearch\n}\n\ndescribe('search tests', () => {\n  let miniSearch\n  beforeEach(() => {\n    miniSearch = createMiniSearchWithBooks()\n  })\n})",
+            "benefits": "Reduces duplication, makes test data consistent, allows easier modifications to test fixtures, improves test maintainability"
+          },
+          {
+            "type": "pattern-improvement",
+            "location": "Overall test file structure",
+            "impact": "high",
+            "description": "Reorganize tests into more granular nested describe blocks grouped by feature area rather than a flat structure.",
+            "before": "describe('MiniSearch', () => {\n  it('should search documents', () => { /* ... */ })\n  it('should filter results', () => { /* ... */ })\n  it('allows custom filtering of results in complex queries', () => { /* ... */ })\n  // ... 100+ more tests\n})",
+            "after": "describe('MiniSearch', () => {\n  describe('Search', () => {\n    describe('Basic queries', () => { /* ... */ })\n    describe('Complex queries', () => { /* ... */ })\n  })\n  describe('Filtering', () => { /* ... */ })\n  describe('Field boosting', () => { /* ... */ })\n})",
+            "benefits": "Significantly improves test navigation, makes it easier to run specific test groups, provides better test output organization"
+          },
+          {
+            "type": "extract-function",
+            "location": "New test: 'allows custom filtering of results in complex queries'",
+            "impact": "medium",
+            "description": "Extract custom filter functions used in tests into named constants or helper functions for reusability and clarity.",
+            "before": "it('allows custom filtering of results in complex queries', () => {\n  const results = miniSearch.search('query', {\n    filter: (result) => result.score > 0.5 && result.category === 'fiction'\n  })\n})",
+            "after": "const filters = {\n  highQualityFiction: (result) => result.score > 0.5 && result.category === 'fiction',\n  byScoreThreshold: (threshold) => (result) => result.score > threshold\n}\n\nit('allows custom filtering of results in complex queries', () => {\n  const results = miniSearch.search('query', {\n    filter: filters.highQualityFiction\n  })\n})",
+            "benefits": "Makes filter logic reusable, improves test readability, reduces duplication of filter functions"
+          },
+          {
+            "type": "modernize",
+            "location": "Throughout the test file",
+            "impact": "medium",
+            "description": "Continue the modernization started in PR #305 (let to const) by applying additional ES6+ features: arrow functions, destructuring, template literals.",
+            "before": "it('should return expected results', function() {\n  const results = miniSearch.search('whale')\n  const firstResult = results[0]\n  expect(firstResult.id).toBe(1)\n})",
+            "after": "it('should return expected results', () => {\n  const [firstResult] = miniSearch.search('whale')\n  expect(firstResult).toMatchObject({\n    id: 1,\n    title: 'Moby Dick'\n  })\n})",
+            "benefits": "Modernizes codebase to current JavaScript standards, improves readability, aligns with modernization effort"
+          },
+          {
+            "type": "pattern-improvement",
+            "location": "Test data management",
+            "impact": "high",
+            "description": "Implement a test data builder pattern or fixture factory for creating test documents with variations.",
+            "before": "it('test with different documents', () => {\n  miniSearch.addAll([\n    { id: 1, title: 'A', text: 'content', category: 'cat1', rating: 5 },\n    { id: 2, title: 'B', text: 'content', category: 'cat2', rating: 3 }\n  ])\n})",
+            "after": "const aDocument = () => new DocumentBuilder()\n\nit('test with different documents', () => {\n  miniSearch.addAll([\n    aDocument().withId(1).withTitle('A').withCategory('cat1').withRating(5).build(),\n    aDocument().withId(2).withTitle('B').withCategory('cat2').withRating(3).build()\n  ])\n})",
+            "benefits": "Makes test data creation explicit and self-documenting, only specify properties that matter, reduces cognitive load"
+          },
+          {
+            "type": "rename",
+            "location": "Test descriptions throughout file",
+            "impact": "medium",
+            "description": "Improve test naming to follow the 'should [behavior] when [context]' pattern. Many tests likely have vague names.",
+            "before": "it('filters work', () => { /* ... */ })\nit('handles complex queries', () => { /* ... */ })",
+            "after": "it('should filter results by category when category filter is provided', () => { /* ... */ })\nit('should apply custom filter function to results when searching with complex queries', () => { /* ... */ })",
+            "benefits": "Makes test purpose immediately clear, improves test report readability, helps identify duplicate tests"
+          },
+          {
+            "type": "extract-function",
+            "location": "Complex query construction",
+            "impact": "medium",
+            "description": "Extract complex query option objects into named constants or factory functions for the new complex query filtering test.",
+            "before": "it('allows custom filtering of results in complex queries', () => {\n  const results = miniSearch.search('query term', {\n    fields: ['title', 'text'],\n    boost: { title: 2 },\n    fuzzy: 0.2,\n    prefix: true,\n    filter: (result) => result.score > 0.5\n  })\n})",
+            "after": "const searchOptions = {\n  default: { fields: ['title', 'text'], boost: { title: 2 }, fuzzy: 0.2, prefix: true },\n  withFilter: (filterFn) => ({ ...searchOptions.default, filter: filterFn })\n}\n\nit('allows custom filtering of results in complex queries', () => {\n  const results = miniSearch.search(\n    'query term',\n    searchOptions.withFilter(filters.highQualityFiction)\n  )\n})",
+            "benefits": "Eliminates duplication of search options, makes the differences between queries obvious"
+          },
+          {
+            "type": "pattern-improvement",
+            "location": "Test isolation and cleanup",
+            "impact": "medium",
+            "description": "Ensure proper test isolation by adding afterEach hooks to clean up MiniSearch instances and prevent state leakage between tests.",
+            "before": "describe('MiniSearch tests', () => {\n  let miniSearch\n  beforeEach(() => {\n    miniSearch = createMiniSearchWithBooks()\n  })\n  it('test 1', () => { /* ... */ })\n  it('test 2', () => { /* ... */ })\n})",
+            "after": "describe('MiniSearch tests', () => {\n  let miniSearch\n  beforeEach(() => {\n    miniSearch = createMiniSearchWithBooks()\n  })\n  afterEach(() => {\n    if (miniSearch) {\n      miniSearch.removeAll()\n      miniSearch = null\n    }\n  })\n  it('test 1', () => { /* ... */ })\n  it('test 2', () => { /* ... */ })\n})",
+            "benefits": "Prevents test interdependencies and flaky tests, makes tests more predictable and reliable"
+          }
+        ],
+        "summary": "The MiniSearch.test.js file is very large (87,643 characters) and contains significant opportunities for refactoring and better organization. Key areas include test setup duplication, opportunities to extract test data builders, potential for better test organization with nested describe blocks, and opportunities to create reusable test helpers. The PR adds a new test for custom filtering in complex queries and modernizes variable declarations (let to const), suggesting the codebase is ready for broader modernization efforts."
+      }
+    }
+  ],
+  "summary": {
+    "totalFiles": 2,
+    "overallScore": 73.5,
+    "criticalIssues": 3,
+    "highPriorityTests": 7,
+    "refactoringOpportunities": 13
+  },
+  "recommendations": [
+    {
+      "priority": "critical",
+      "category": "Test Coverage",
+      "description": "Add comprehensive unit tests for the new makeResult method and integration tests for executeQuerySpec filter application at QueryCombination level. These are core changes that affect all search operations.",
+      "files": [
+        "src/MiniSearch.ts",
+        "src/MiniSearch.test.js"
+      ]
+    },
+    {
+      "priority": "critical",
+      "category": "Error Handling",
+      "description": "Implement proper error handling and validation for filter functions. Add try-catch blocks around filter execution and handle edge cases like null/undefined filters, non-boolean return values, and thrown exceptions.",
+      "files": [
+        "src/MiniSearch.ts"
+      ]
+    },
+    {
+      "priority": "critical",
+      "category": "Edge Case Testing",
+      "description": "Add tests for filter edge cases: empty result sets, all results filtered out, null/undefined values, malformed input, and filter performance with large datasets (10K+ documents).",
+      "files": [
+        "src/MiniSearch.test.js"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Code Maintainability",
+      "description": "Refactor MiniSearch.ts to eliminate code duplication in filter application logic. Extract match formatting logic from makeResult and implement a filter strategy pattern to reduce duplicated code across multiple branches.",
+      "files": [
+        "src/MiniSearch.ts"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Test Organization",
+      "description": "Reorganize the large test file (87,643 characters) into nested describe blocks grouped by feature area (Search, Filtering, Field Boosting, etc.). Extract test setup factories and common filter functions to reduce duplication.",
+      "files": [
+        "src/MiniSearch.test.js"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Type Safety",
+      "description": "Strengthen TypeScript type safety by adding readonly modifiers to filter functions and search result parameters. Create specific FilterFunction types and ensure immutability in result objects.",
+      "files": [
+        "src/MiniSearch.ts"
+      ]
+    },
+    {
+      "priority": "medium",
+      "category": "Performance Optimization",
+      "description": "Review filter application performance, especially for large result sets. Consider implementing early filtering at the query execution level instead of post-query filtering to avoid processing results that will be filtered out.",
+      "files": [
+        "src/MiniSearch.ts"
+      ]
+    },
+    {
+      "priority": "medium",
+      "category": "Code Modernization",
+      "description": "Continue the modernization effort started in PR #305 (let to const). Apply additional ES6+ features throughout both files: arrow functions, destructuring, spread operators, and template literals.",
+      "files": [
+        "src/MiniSearch.ts",
+        "src/MiniSearch.test.js"
+      ]
+    },
+    {
+      "priority": "medium",
+      "category": "Test Improvements",
+      "description": "Improve test naming to follow 'should [behavior] when [context]' pattern. Extract reusable filter helper functions and create test data builders for more flexible document creation.",
+      "files": [
+        "src/MiniSearch.test.js"
+      ]
+    },
+    {
+      "priority": "low",
+      "category": "Security Considerations",
+      "description": "Document security considerations for user-provided filter functions. Consider implementing timeout mechanisms for filter execution and warn users about code injection risks.",
+      "files": [
+        "src/MiniSearch.ts"
+      ]
+    }
+  ],
+  "metadata": {
+    "analyzedAt": "2026-11-18T16:08:52.195Z",
+    "duration": 265785,
+    "agentVersions": {
+      "code-quality-analyzer": "1.0",
+      "test-coverage-analyzer": "1.0",
+      "refactoring-suggester": "1.0"
+    }
+  }
+}

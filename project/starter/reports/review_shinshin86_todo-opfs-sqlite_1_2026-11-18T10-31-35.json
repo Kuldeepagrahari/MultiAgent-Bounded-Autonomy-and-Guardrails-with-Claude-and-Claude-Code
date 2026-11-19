@@ -1,0 +1,334 @@
+{
+  "pullRequest": {
+    "owner": "shinshin86",
+    "repo": "todo-opfs-sqlite",
+    "number": 1
+  },
+  "fileReviews": [
+    {
+      "file": "src/db.ts",
+      "codeQuality": {
+        "file": "src/db.ts",
+        "issues": [
+          {
+            "line": 1,
+            "severity": "medium",
+            "category": "style",
+            "description": "Using @ts-ignore to suppress TypeScript errors is a code smell that hides potential type safety issues. The neverchange library likely lacks proper TypeScript definitions.",
+            "suggestion": "Either add proper TypeScript types for the neverchange library or install @types/neverchange if available. Consider using 'any' type explicitly with a comment explaining why instead of @ts-ignore."
+          },
+          {
+            "line": 3,
+            "severity": "high",
+            "category": "bug-risk",
+            "description": "Variable 'db' is typed as 'any' which completely removes TypeScript type safety. This defeats one of the main benefits of using TypeScript.",
+            "suggestion": "Define a proper interface for the NeverChangeDB type or use a more specific type annotation."
+          },
+          {
+            "line": 7,
+            "severity": "critical",
+            "category": "bug-risk",
+            "description": "The initDb() function has a logic error. The statement 'if(db) db;' does nothing - it checks if db exists but then just references it without returning.",
+            "suggestion": "Change line 7 to: 'if(db) return;' to prevent re-initialization of the database."
+          },
+          {
+            "line": 25,
+            "severity": "medium",
+            "category": "best-practice",
+            "description": "Missing validation of the 'text' parameter in addTodo(). Empty or null strings should be rejected before attempting database insertion.",
+            "suggestion": "Add input validation: 'if (!text || text.trim().length === 0) throw new Error(\"Todo text cannot be empty\");'"
+          },
+          {
+            "line": 25,
+            "severity": "medium",
+            "category": "maintainability",
+            "description": "The addTodo() function logs success but throws errors inconsistently with other functions like updateTodo and deleteTodo.",
+            "suggestion": "Establish a consistent error handling pattern across all functions - either all throw or all log."
+          },
+          {
+            "line": 35,
+            "severity": "medium",
+            "category": "best-practice",
+            "description": "The getTodos() function doesn't validate that db is initialized before attempting a query. All public functions are vulnerable to this issue.",
+            "suggestion": "Add a check: 'if (!db) throw new Error(\"Database not initialized. Call initDb() first.\");'"
+          },
+          {
+            "line": 1,
+            "severity": "high",
+            "category": "maintainability",
+            "description": "No exported type definitions or interfaces. The module's type contract is unclear - callers don't know what types to expect.",
+            "suggestion": "Export type definitions: 'export interface Todo { id: number; text: string; completed: boolean; deleted: boolean; }'"
+          },
+          {
+            "line": 6,
+            "severity": "medium",
+            "category": "best-practice",
+            "description": "The initDb() function should handle concurrent calls gracefully. If called twice simultaneously, it may create race conditions.",
+            "suggestion": "Add a promise-based initialization flag to track ongoing initialization."
+          }
+        ],
+        "overallScore": 52,
+        "summary": "The code has several significant quality issues that impact type safety, error handling, and maintainability. The critical issue is the broken initialization check (if(db) db; should be if(db) return;). Type safety is severely compromised with 'any' types and @ts-ignore directives. Error handling is inconsistent across functions. Input validation is missing, and database initialization doesn't protect against concurrent calls."
+      },
+      "testCoverage": {
+        "file": "src/db.ts",
+        "hasTests": false,
+        "testFiles": [],
+        "untestedPaths": [
+          {
+            "type": "function",
+            "location": "initDb()",
+            "priority": "critical",
+            "reasoning": "No tests verify that migrations are properly applied. Missing tests for initial database creation, migration versions, and idempotency.",
+            "suggestedTest": "Test that migrations are applied correctly and initDb is idempotent"
+          },
+          {
+            "type": "function",
+            "location": "addTodo(text: string)",
+            "priority": "critical",
+            "reasoning": "No tests verify insertion behavior or error handling paths.",
+            "suggestedTest": "Test successful insert, initial todo state (completed=0, deleted=0), and error scenarios"
+          },
+          {
+            "type": "function",
+            "location": "getTodos()",
+            "priority": "critical",
+            "reasoning": "No tests verify query correctness, filtering, or ordering.",
+            "suggestedTest": "Test that query returns empty array when no todos, filters deleted=0, and orders by id DESC"
+          },
+          {
+            "type": "function",
+            "location": "toggleTodo(id: number)",
+            "priority": "critical",
+            "reasoning": "No tests verify toggle behavior or error handling.",
+            "suggestedTest": "Test that toggle switches completed status and handles non-existent ids"
+          },
+          {
+            "type": "function",
+            "location": "updateTodo(id: number, text: string)",
+            "priority": "critical",
+            "reasoning": "No tests verify update behavior or input validation.",
+            "suggestedTest": "Test that text is updated correctly and other columns remain unchanged"
+          },
+          {
+            "type": "function",
+            "location": "deleteTodo(id: number)",
+            "priority": "critical",
+            "reasoning": "No tests verify soft delete behavior.",
+            "suggestedTest": "Test that todo is marked as deleted without removal and is filtered from getTodos()"
+          },
+          {
+            "type": "edge-case",
+            "location": "Database state - null db instance",
+            "priority": "critical",
+            "reasoning": "Global db variable starts as null. Functions will crash if called before initDb() completes.",
+            "suggestedTest": "Test that calling functions before initDb throws appropriate errors"
+          }
+        ],
+        "coverageEstimate": 0,
+        "summary": "The src/db.ts file has ZERO test coverage. All six exported functions are completely untested. Critical gaps include: no migration testing, no CRUD operation testing, missing error handling tests, and no data persistence verification. The code is vulnerable to runtime errors when called before initialization."
+      },
+      "refactorings": {
+        "file": "src/db.ts",
+        "suggestions": [
+          {
+            "type": "pattern-improvement",
+            "location": "Lines 6-7 - initDb function",
+            "impact": "high",
+            "description": "The condition 'if(db) db;' does nothing - should use early return.",
+            "before": "export async function initDb() {\n  if(db) db;",
+            "after": "export async function initDb() {\n  if(db) return;",
+            "benefits": "Prevents duplicate database initialization and fixes logic bug."
+          },
+          {
+            "type": "simplify",
+            "location": "Lines 3-5 - Type safety",
+            "impact": "high",
+            "description": "Replace 'any' type with proper interface definitions.",
+            "before": "let db: any = null;",
+            "after": "interface Migration { version: number; up: (db: NeverChangeDB) => Promise<void>; }\nlet db: NeverChangeDB | null = null;",
+            "benefits": "Enables TypeScript type checking and provides better IDE autocomplete."
+          },
+          {
+            "type": "extract-function",
+            "location": "Lines 10-30 - Migrations definition",
+            "impact": "medium",
+            "description": "Extract migrations array into a separate constant.",
+            "before": "db.addMigrations([...])",
+            "after": "const MIGRATIONS: Migration[] = [...]\ndb.addMigrations(MIGRATIONS);",
+            "benefits": "Separates schema definition from initialization logic and improves testability."
+          },
+          {
+            "type": "pattern-improvement",
+            "location": "Lines 25-70 - Error handling consistency",
+            "impact": "high",
+            "description": "Inconsistent error handling across functions - create a common wrapper.",
+            "before": "try { await db.execute(...); console.log(...); } catch(error) { console.error(...); }",
+            "after": "async function executeQuery(query: string, params: any[], operation: string): Promise<void> { ... }\nexport async function addTodo(text: string): Promise<void> { await executeQuery(...); }",
+            "benefits": "Eliminates code duplication and ensures consistent error handling."
+          },
+          {
+            "type": "rename",
+            "location": "Line 60 - deleteTodo function",
+            "impact": "low",
+            "description": "Function performs soft delete but name suggests permanent deletion.",
+            "before": "export async function deleteTodo(id: number)",
+            "after": "export async function markTodoAsDeleted(id: number): Promise<void>",
+            "benefits": "Makes the actual behavior explicit and reduces confusion."
+          }
+        ],
+        "summary": "The database layer has opportunities to improve type safety, standardize error handling, fix the initialization logic bug, and extract reusable patterns. These refactorings will improve maintainability and prevent subtle bugs."
+      }
+    },
+    {
+      "file": "package.json",
+      "codeQuality": {
+        "file": "package.json",
+        "issues": [
+          {
+            "line": 15,
+            "severity": "critical",
+            "category": "security",
+            "description": "New untested dependency 'neverchange' at version 0.0.1 poses significant security risk. Pre-release version indicates initial/unstable release with no established track record.",
+            "suggestion": "Thoroughly audit the neverchange library before merging. Consider pinning to exact version instead of using caret range."
+          },
+          {
+            "line": 15,
+            "severity": "high",
+            "category": "bug-risk",
+            "description": "Dependency 'neverchange' at 0.0.1 is in pre-release phase with potentially unstable API and high risk for breaking changes.",
+            "suggestion": "Pin to exact version using '0.0.1' instead of '^0.0.1' until the package reaches version 1.0.0."
+          },
+          {
+            "line": 15,
+            "severity": "high",
+            "category": "maintainability",
+            "description": "No documentation explaining the purpose of 'neverchange' dependency or why a pre-release package was added.",
+            "suggestion": "Add documentation explaining what neverchange does and why it was chosen."
+          },
+          {
+            "line": 1,
+            "severity": "info",
+            "category": "best-practice",
+            "description": "No 'engines' field specified in package.json. This can lead to runtime issues with incompatible Node.js versions.",
+            "suggestion": "Add an 'engines' field: '\"engines\": {\"node\": \">=18.0.0\"}'"
+          },
+          {
+            "line": 1,
+            "severity": "medium",
+            "category": "best-practice",
+            "description": "Missing standard metadata fields (repository, bugs, description) reduces discoverability and issue tracking.",
+            "suggestion": "Add repository and bugs fields to improve project documentation."
+          }
+        ],
+        "overallScore": 62,
+        "summary": "The package.json introduces a critical security concern with 'neverchange@0.0.1', a pre-release dependency with no established track record. The caret version specifier (^0.0.1) compounds this risk. Additionally, the project lacks standard metadata fields (engines, repository, bugs) and proper documentation explaining the rationale for including an alpha-stage dependency."
+      },
+      "testCoverage": {
+        "file": "package.json",
+        "hasTests": false,
+        "testFiles": [],
+        "untestedPaths": [
+          {
+            "type": "edge-case",
+            "location": "neverchange dependency compatibility",
+            "priority": "high",
+            "reasoning": "No tests verify that the neverchange library works correctly with the existing codebase. The package is in pre-release and may have undocumented dependencies or behavior changes.",
+            "suggestedTest": "Integration test: Verify that neverchange API matches expectations (NeverChangeDB constructor, execute, query, addMigrations, init methods)"
+          },
+          {
+            "type": "edge-case",
+            "location": "Dependency version compatibility",
+            "priority": "medium",
+            "reasoning": "The neverchange package lists @sqlite.org/sqlite-wasm as a dependency. Need to verify there are no version conflicts.",
+            "suggestedTest": "Verify that neverchange@0.0.1's @sqlite.org/sqlite-wasm@^3.46.1-build2 is compatible with project's direct dependency"
+          }
+        ],
+        "coverageEstimate": 50,
+        "summary": "The package.json is a configuration file with no executable code. However, the introduction of neverchange requires testing to verify: (1) the library's API matches expectations, (2) no dependency version conflicts exist, and (3) integration between neverchange and the application works correctly."
+      },
+      "refactorings": {
+        "file": "package.json",
+        "suggestions": [
+          {
+            "type": "modernize",
+            "location": "Line 15 - Version specification",
+            "impact": "high",
+            "description": "Using caret (^) for pre-release version 0.0.1 allows unexpected updates. For 0.x versions, caret allows breaking changes.",
+            "before": "\"neverchange\": \"^0.0.1\"",
+            "after": "\"neverchange\": \"0.0.1\"",
+            "benefits": "Pins to exact version for stability and prevents unexpected breaking changes."
+          },
+          {
+            "type": "pattern-improvement",
+            "location": "Line 1 - Configuration completeness",
+            "impact": "low",
+            "description": "Missing standard package.json fields (engines, repository, bugs) that improve project documentation.",
+            "before": "{\n  \"name\": \"todo-opfs-sqlite\",\n  \"private\": true,",
+            "after": "{\n  \"name\": \"todo-opfs-sqlite\",\n  \"description\": \"A simple TODO application using SQLite WASM\",\n  \"private\": true,\n  \"engines\": {\"node\": \">=18.0.0\"},\n  \"repository\": {\"type\": \"git\", \"url\": \"https://github.com/shinshin86/todo-opfs-sqlite.git\"},",
+            "benefits": "Improves project documentation and prevents compatibility issues."
+          }
+        ],
+        "summary": "Pin neverchange to exact version 0.0.1 and add standard metadata fields (engines, repository, description) to improve project documentation and stability."
+      }
+    }
+  ],
+  "summary": {
+    "totalFiles": 2,
+    "overallScore": 57,
+    "criticalIssues": 2,
+    "highPriorityTests": 7,
+    "refactoringOpportunities": 5
+  },
+  "recommendations": [
+    {
+      "priority": "critical",
+      "category": "Bug Fix",
+      "description": "Fix the logic error in initDb() function. The statement 'if(db) db;' (line 7) does nothing. Change to 'if(db) return;' to prevent duplicate initialization and potential race conditions.",
+      "files": [
+        "src/db.ts"
+      ]
+    },
+    {
+      "priority": "critical",
+      "category": "Security",
+      "description": "Review and validate the 'neverchange@0.0.1' dependency before merging. This is a pre-release package with no established track record. Either pin to exact version or wait for stable 1.0.0 release.",
+      "files": [
+        "package.json"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Type Safety",
+      "description": "Replace 'any' type usage throughout src/db.ts with proper TypeScript interfaces. Remove @ts-ignore and define proper types for NeverChangeDB, migrations, and Todo records.",
+      "files": [
+        "src/db.ts"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Error Handling",
+      "description": "Standardize error handling patterns across database functions. Currently inconsistent: addTodo only logs, toggleTodo has no handling, updateTodo/deleteTodo throw errors. Create a common error handling wrapper.",
+      "files": [
+        "src/db.ts"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Testing",
+      "description": "Add comprehensive test coverage for database layer. Currently 0% coverage. Priority: test all CRUD operations, migrations, error paths, and edge cases like null db instance and concurrent initialization.",
+      "files": [
+        "src/db.ts"
+      ]
+    }
+  ],
+  "metadata": {
+    "analyzedAt": "2026-11-18T10:31:35.601Z",
+    "duration": 166060,
+    "agentVersions": {
+      "code-quality-analyzer": "1.0",
+      "test-coverage-analyzer": "1.0",
+      "refactoring-suggester": "1.0"
+    }
+  }
+}

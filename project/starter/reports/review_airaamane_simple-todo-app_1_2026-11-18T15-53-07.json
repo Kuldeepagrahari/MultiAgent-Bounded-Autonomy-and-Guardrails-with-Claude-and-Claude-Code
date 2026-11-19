@@ -1,0 +1,32 @@
+{
+  "pullRequest": {
+    "owner": "airaamane",
+    "repo": "simple-todo-app",
+    "number": 1
+  },
+  "fileReviews": [],
+  "summary": {
+    "totalFiles": 0,
+    "overallScore": 0,
+    "criticalIssues": 0,
+    "highPriorityTests": 0,
+    "refactoringOpportunities": 0
+  },
+  "recommendations": [
+    {
+      "priority": "critical",
+      "category": "Access Error",
+      "description": "Unable to access PR airaamane/simple-todo-app#1. The repository may not exist, may be private, or the PR number may be incorrect. GitHub API returned 'Not Found' errors when attempting to retrieve PR details and file contents.",
+      "files": []
+    }
+  ],
+  "metadata": {
+    "analyzedAt": "2026-11-18T15:53:07.150Z",
+    "duration": 30843,
+    "agentVersions": {
+      "code-quality-analyzer": "unavailable",
+      "test-coverage-analyzer": "unavailable",
+      "refactoring-suggester": "unavailable"
+    }
+  }
+}

@@ -1,0 +1,315 @@
+{
+  "pullRequest": {
+    "owner": "airaamane",
+    "repo": "simple-todo-app",
+    "number": 2
+  },
+  "fileReviews": [
+    {
+      "file": "src/components/TodoItem.tsx",
+      "codeQuality": {
+        "file": "src/components/TodoItem.tsx",
+        "issues": [
+          {
+            "line": 15,
+            "severity": "high",
+            "category": "best-practice",
+            "description": "Missing prop-types validation or TypeScript interface for component props",
+            "suggestion": "Define a TypeScript interface for props with explicit type annotations"
+          },
+          {
+            "line": 28,
+            "severity": "medium",
+            "category": "maintainability",
+            "description": "Inline event handler could be extracted to named function for better testability",
+            "suggestion": "Extract onClick handler to a separate function using useCallback"
+          },
+          {
+            "line": 42,
+            "severity": "low",
+            "category": "style",
+            "description": "Missing accessibility attributes on interactive elements",
+            "suggestion": "Add aria-label and aria-pressed attributes to improve accessibility"
+          }
+        ],
+        "overallScore": 72,
+        "summary": "TodoItem component has decent structure but lacks type safety improvements and accessibility features"
+      },
+      "testCoverage": {
+        "file": "src/components/TodoItem.tsx",
+        "hasTests": true,
+        "testFiles": [
+          "tests/components/TodoItem.test.tsx"
+        ],
+        "untestedPaths": [
+          {
+            "type": "branch",
+            "location": "Delete button click handler with confirmation",
+            "priority": "high",
+            "reasoning": "Critical user action that modifies state without proper branch coverage",
+            "suggestedTest": "Test both confirmation acceptance and cancellation flows"
+          },
+          {
+            "type": "edge-case",
+            "location": "Completed state rendering with strikethrough",
+            "priority": "medium",
+            "reasoning": "Visual state changes need coverage to prevent regression",
+            "suggestedTest": "Assert CSS classes and styling when todo.completed is true/false"
+          }
+        ],
+        "coverageEstimate": 65,
+        "summary": "Component has test file but coverage is incomplete with critical delete operations needing additional test cases"
+      },
+      "refactorings": {
+        "file": "src/components/TodoItem.tsx",
+        "suggestions": [
+          {
+            "type": "extract-function",
+            "location": "Delete handler logic",
+            "impact": "medium",
+            "description": "Extract delete handler into separate function for reusability and testing",
+            "before": "onClick={() => { if (window.confirm('Delete?')) onDelete(id); }}",
+            "after": "const handleDelete = useCallback(() => { if (window.confirm('Delete?')) onDelete(id); }, [onDelete, id]);",
+            "benefits": "Improves testability, enables reuse, cleaner JSX, better performance"
+          },
+          {
+            "type": "modernize",
+            "location": "React imports",
+            "impact": "low",
+            "description": "Update to modern React patterns without explicit React import",
+            "before": "import React, { useState } from 'react';",
+            "after": "import { useState } from 'react';",
+            "benefits": "Reduces bundle size, follows modern React patterns"
+          }
+        ],
+        "summary": "Component could benefit from extracting complex handlers and using modern React patterns"
+      }
+    },
+    {
+      "file": "src/hooks/useTodoStore.ts",
+      "codeQuality": {
+        "file": "src/hooks/useTodoStore.ts",
+        "issues": [
+          {
+            "line": 12,
+            "severity": "high",
+            "category": "security",
+            "description": "localStorage is used without error handling for quota exceeded",
+            "suggestion": "Wrap localStorage calls in try-catch and implement fallback storage mechanism"
+          },
+          {
+            "line": 25,
+            "severity": "high",
+            "category": "bug-risk",
+            "description": "Missing JSON.parse error handling could throw uncaught exceptions",
+            "suggestion": "Add try-catch around JSON.parse with default value fallback"
+          },
+          {
+            "line": 42,
+            "severity": "medium",
+            "category": "performance",
+            "description": "Array operations on every state change without memoization",
+            "suggestion": "Use useMemo for derived state like filtered todos or sorting operations"
+          }
+        ],
+        "overallScore": 68,
+        "summary": "Hook has critical storage issues that could cause app crashes. Missing error handling in localStorage operations"
+      },
+      "testCoverage": {
+        "file": "src/hooks/useTodoStore.ts",
+        "hasTests": true,
+        "testFiles": [
+          "tests/hooks/useTodoStore.test.ts"
+        ],
+        "untestedPaths": [
+          {
+            "type": "edge-case",
+            "location": "localStorage quota exceeded scenario",
+            "priority": "critical",
+            "reasoning": "Real-world failure mode that app should handle gracefully",
+            "suggestedTest": "Mock localStorage.setItem to throw QuotaExceededError"
+          },
+          {
+            "type": "edge-case",
+            "location": "Corrupted JSON in localStorage",
+            "priority": "high",
+            "reasoning": "Could occur if storage is corrupted or version changed",
+            "suggestedTest": "Store invalid JSON and verify app recovers with default data"
+          }
+        ],
+        "coverageEstimate": 55,
+        "summary": "Hook has test file but critical edge cases are not covered. Storage error handling scenarios need testing"
+      },
+      "refactorings": {
+        "file": "src/hooks/useTodoStore.ts",
+        "suggestions": [
+          {
+            "type": "pattern-improvement",
+            "location": "localStorage handling",
+            "impact": "high",
+            "description": "Create a wrapper utility for safe localStorage operations",
+            "before": "const store = JSON.parse(localStorage.getItem('todos') || '[]');",
+            "after": "const store = safeLocalStorage.getItem('todos', []);",
+            "benefits": "Centralized error handling, testable, reusable across the app"
+          },
+          {
+            "type": "extract-function",
+            "location": "Todo validation logic",
+            "impact": "medium",
+            "description": "Extract validation into separate function for reusability",
+            "before": "if (!todo.id || !todo.title) return false;",
+            "after": "const isValidTodo = (todo: Todo): boolean => { return !!todo.id && !!todo.title; };",
+            "benefits": "Better type safety, reusable validation, easier testing"
+          }
+        ],
+        "summary": "Hook needs refactoring for robust storage handling and better separation of concerns"
+      }
+    },
+    {
+      "file": "src/utils/api.ts",
+      "codeQuality": {
+        "file": "src/utils/api.ts",
+        "issues": [
+          {
+            "line": 8,
+            "severity": "critical",
+            "category": "security",
+            "description": "API key exposed in source code comment",
+            "suggestion": "Remove all API keys and use environment variables exclusively"
+          },
+          {
+            "line": 15,
+            "severity": "high",
+            "category": "best-practice",
+            "description": "Fetch requests lack timeout handling",
+            "suggestion": "Implement AbortController with timeout to prevent hanging requests"
+          },
+          {
+            "line": 28,
+            "severity": "high",
+            "category": "maintainability",
+            "description": "Generic error response handling could hide important error details",
+            "suggestion": "Implement structured error handling with specific error types"
+          }
+        ],
+        "overallScore": 58,
+        "summary": "API utilities have critical security issues with exposed credentials and poor error handling"
+      },
+      "testCoverage": {
+        "file": "src/utils/api.ts",
+        "hasTests": false,
+        "testFiles": [],
+        "untestedPaths": [
+          {
+            "type": "function",
+            "location": "fetchTodos function",
+            "priority": "critical",
+            "reasoning": "Core API function with no test coverage is unacceptable",
+            "suggestedTest": "Mock fetch with successful response, error response, and timeout scenarios"
+          },
+          {
+            "type": "function",
+            "location": "createTodo function",
+            "priority": "critical",
+            "reasoning": "Data mutation endpoint without tests",
+            "suggestedTest": "Test POST request with various payload validations"
+          },
+          {
+            "type": "edge-case",
+            "location": "Network timeout handling",
+            "priority": "critical",
+            "reasoning": "Network timeout is critical failure mode",
+            "suggestedTest": "Mock AbortController timeout and verify error handling"
+          }
+        ],
+        "coverageEstimate": 0,
+        "summary": "API utilities have ZERO test coverage. This is a critical gap for a production application"
+      },
+      "refactorings": {
+        "file": "src/utils/api.ts",
+        "suggestions": [
+          {
+            "type": "pattern-improvement",
+            "location": "API utility error handling",
+            "impact": "high",
+            "description": "Implement error handling wrapper pattern for all API calls",
+            "before": "const response = await fetch(url); if (!response.ok) throw new Error('API Error');",
+            "after": "try { const response = await fetchWithTimeout(url, 5000); return handleResponse(response); } catch (error) { return handleApiError(error); }",
+            "benefits": "Consistent error handling, timeout protection, better debugging"
+          },
+          {
+            "type": "extract-function",
+            "location": "Request configuration",
+            "impact": "medium",
+            "description": "Extract common request headers and configuration",
+            "before": "headers: { 'Content-Type': 'application/json', 'Authorization': '...' }",
+            "after": "const getRequestHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.REACT_APP_API_KEY}` });",
+            "benefits": "DRY, centralized configuration, easier to test"
+          }
+        ],
+        "summary": "API utilities need major refactoring focusing on security, error handling, and testability"
+      }
+    }
+  ],
+  "summary": {
+    "totalFiles": 3,
+    "overallScore": 65,
+    "criticalIssues": 5,
+    "highPriorityTests": 7,
+    "refactoringOpportunities": 8
+  },
+  "recommendations": [
+    {
+      "priority": "critical",
+      "category": "Security",
+      "description": "API utilities expose credentials in source code. Immediately move all sensitive configuration to environment variables and implement secure credential handling.",
+      "files": [
+        "src/utils/api.ts"
+      ]
+    },
+    {
+      "priority": "critical",
+      "category": "Testing",
+      "description": "API utilities lack any test coverage (0%). This is unacceptable for production. Implement comprehensive test suite for all API functions including error scenarios and timeouts.",
+      "files": [
+        "src/utils/api.ts"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Error Handling",
+      "description": "localStorage operations lack error handling for quota exceeded and JSON parse errors. These are real-world failure modes that need graceful handling.",
+      "files": [
+        "src/hooks/useTodoStore.ts"
+      ]
+    },
+    {
+      "priority": "high",
+      "category": "Test Coverage",
+      "description": "Remaining test coverage is incomplete with critical edge cases missing. Priority: localStorage errors and delete confirmation flows.",
+      "files": [
+        "src/hooks/useTodoStore.ts",
+        "src/components/TodoItem.tsx"
+      ]
+    },
+    {
+      "priority": "medium",
+      "category": "Code Quality",
+      "description": "Extract complex event handlers and validation logic into separate functions to improve testability and reusability across the codebase.",
+      "files": [
+        "src/components/TodoItem.tsx",
+        "src/hooks/useTodoStore.ts"
+      ]
+    }
+  ],
+  "metadata": {
+    "analyzedAt": "2026-11-18T10:27:04.327Z",
+    "duration": 95844,
+    "agentVersions": {
+      "code-quality-analyzer": "1.0.0",
+      "test-coverage-analyzer": "1.0.0",
+      "refactoring-suggester": "1.0.0",
+      "orchestrator": "1.0.0"
+    }
+  }
+}
